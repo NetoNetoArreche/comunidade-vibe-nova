@@ -10,9 +10,9 @@ const testWebhook = async () => {
       "product_name": "Produto Teste"
     },
     "Customer": {
-      "full_name": "Cliente Teste",
-      "first_name": "Cliente",
-      "email": "teste.webhook@gmail.com"  // Use um email real aqui
+      "full_name": "Helio Teste",
+      "first_name": "Helio",
+      "email": "designsemcodigo@gmail.com"  // Seu email para teste
     }
   };
 

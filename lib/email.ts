@@ -5,7 +5,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 export async function sendWelcomeEmail(email: string, name: string) {
   try {
     const { data, error } = await resend.emails.send({
-      from: 'Comunidade <onboarding@resend.dev>', // Mude depois para seu domínio
+      from: 'Comunidade Vibe Coding <contato@comunidadevibecoding.com>',
       to: email,
       subject: '🎉 Bem-vindo à Comunidade!',
       html: `
@@ -82,7 +82,7 @@ export async function sendWelcomeEmail(email: string, name: string) {
               </div>
               
               <center>
-                <a href="https://comunidadeiacode.vercel.app/auth/reset-password" class="button">
+                <a href="https://www.comunidadevibecoding.com/auth/reset-password" class="button">
                   🔑 Criar Minha Senha
                 </a>
               </center>

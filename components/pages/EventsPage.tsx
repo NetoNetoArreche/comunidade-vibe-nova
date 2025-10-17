@@ -48,11 +48,28 @@ export default function EventsPage({ user }: EventsPageProps) {
   })
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('all')
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     fetchEvents()
     fetchStats()
-  }, [])
+    checkIfAdmin()
+  }, [user])
+
+  async function checkIfAdmin() {
+    if (!user) {
+      setIsAdmin(false)
+      return
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    setIsAdmin(profile?.role === 'admin')
+  }
 
   async function fetchEvents() {
     try {
@@ -247,7 +264,7 @@ export default function EventsPage({ user }: EventsPageProps) {
             </p>
           </div>
           
-          {user && (
+          {isAdmin && (
             <button className="flex items-center justify-center space-x-2 bg-primary-600 hover:bg-primary-700 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-xl transition-colors shadow-lg whitespace-nowrap flex-shrink-0">
               <Plus className="h-5 w-5" />
               <span className="hidden sm:inline">Criar Evento</span>

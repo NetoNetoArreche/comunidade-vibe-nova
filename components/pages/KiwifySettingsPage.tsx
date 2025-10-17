@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js'
-import { Key, ShoppingCart, Check, X, Plus, Trash2, Save, ExternalLink } from 'lucide-react'
+import { Key, Save, ExternalLink, Activity, CheckCircle, XCircle, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface KiwifySettingsPageProps {
@@ -17,33 +17,29 @@ interface KiwifySettings {
   is_active: boolean
 }
 
-interface KiwifyProduct {
+interface WebhookLog {
   id: string
-  product_id: string
-  product_name: string
-  grant_access: boolean
-  auto_approve: boolean
+  event_type: string
+  customer_email: string
+  status: string
+  created_at: string
+  error_message: string | null
 }
 
 export default function KiwifySettingsPage({ user, profile }: KiwifySettingsPageProps) {
   const [settings, setSettings] = useState<KiwifySettings | null>(null)
-  const [products, setProducts] = useState<KiwifyProduct[]>([])
+  const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   
   // Form states
   const [webhookSecret, setWebhookSecret] = useState('')
   const [isActive, setIsActive] = useState(true)
-  
-  // New product form
-  const [showAddProduct, setShowAddProduct] = useState(false)
-  const [newProductId, setNewProductId] = useState('')
-  const [newProductName, setNewProductName] = useState('')
 
   useEffect(() => {
     if (user && profile?.role === 'admin') {
       loadSettings()
-      loadProducts()
+      loadWebhookLogs()
     }
   }, [user, profile])
 
@@ -62,14 +58,15 @@ export default function KiwifySettingsPage({ user, profile }: KiwifySettingsPage
     setLoading(false)
   }
 
-  async function loadProducts() {
+  async function loadWebhookLogs() {
     const { data, error } = await supabase
-      .from('kiwify_products')
+      .from('kiwify_webhook_logs')
       .select('*')
       .order('created_at', { ascending: false })
+      .limit(20)
 
     if (data) {
-      setProducts(data)
+      setWebhookLogs(data)
     }
   }
 
@@ -110,60 +107,24 @@ export default function KiwifySettingsPage({ user, profile }: KiwifySettingsPage
     setSaving(false)
   }
 
-  async function addProduct() {
-    if (!newProductId || !newProductName) {
-      toast.error('Preencha ID e nome do produto')
-      return
-    }
-
-    const { error } = await supabase
-      .from('kiwify_products')
-      .insert({
-        product_id: newProductId,
-        product_name: newProductName,
-        grant_access: true,
-        auto_approve: true
-      })
-
-    if (error) {
-      console.error('Error adding product:', error)
-      toast.error('Erro ao adicionar produto')
-    } else {
-      toast.success('Produto adicionado!')
-      setNewProductId('')
-      setNewProductName('')
-      setShowAddProduct(false)
-      loadProducts()
-    }
+  function formatDate(dateString: string) {
+    return new Date(dateString).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
-  async function deleteProduct(productId: string) {
-    if (!confirm('Tem certeza que deseja remover este produto?')) return
-
-    const { error } = await supabase
-      .from('kiwify_products')
-      .delete()
-      .eq('id', productId)
-
-    if (error) {
-      toast.error('Erro ao remover produto')
-    } else {
-      toast.success('Produto removido')
-      loadProducts()
-    }
-  }
-
-  async function toggleProductAccess(productId: string, currentValue: boolean) {
-    const { error } = await supabase
-      .from('kiwify_products')
-      .update({ grant_access: !currentValue })
-      .eq('id', productId)
-
-    if (error) {
-      toast.error('Erro ao atualizar produto')
-    } else {
-      toast.success('Produto atualizado')
-      loadProducts()
+  function getStatusIcon(status: string) {
+    switch (status) {
+      case 'success':
+        return <CheckCircle className="h-5 w-5 text-green-600" />
+      case 'error':
+        return <XCircle className="h-5 w-5 text-red-600" />
+      default:
+        return <Clock className="h-5 w-5 text-yellow-600" />
     }
   }
 
@@ -283,122 +244,70 @@ export default function KiwifySettingsPage({ user, profile }: KiwifySettingsPage
         </div>
       </div>
 
-      {/* Products */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+      {/* Webhook Logs */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
-            <ShoppingCart className="h-6 w-6 text-primary-600 mr-3" />
+            <Activity className="h-6 w-6 text-primary-600 mr-3" />
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Produtos Vinculados
+              Logs de Webhooks
             </h2>
           </div>
           <button
-            onClick={() => setShowAddProduct(!showAddProduct)}
-            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"
+            onClick={loadWebhookLogs}
+            className="text-primary-600 hover:text-primary-700 text-sm font-medium"
           >
-            <Plus className="h-5 w-5 mr-2" />
-            Adicionar Produto
+            Atualizar
           </button>
         </div>
 
-        {/* Add Product Form */}
-        {showAddProduct && (
-          <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  ID do Produto (Kiwify)
-                </label>
-                <input
-                  type="text"
-                  value={newProductId}
-                  onChange={(e) => setNewProductId(e.target.value)}
-                  placeholder="Ex: prod_abc123"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nome do Produto
-                </label>
-                <input
-                  type="text"
-                  value={newProductName}
-                  onChange={(e) => setNewProductName(e.target.value)}
-                  placeholder="Ex: VibeCoding"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                />
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={addProduct}
-                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-                >
-                  Adicionar
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAddProduct(false)
-                    setNewProductId('')
-                    setNewProductName('')
-                  }}
-                  className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Products List */}
-        {products.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            Nenhum produto vinculado ainda
+        {webhookLogs.length === 0 ? (
+          <div className="text-center py-12">
+            <Activity className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-500 dark:text-gray-400">
+              Nenhum webhook recebido ainda
+            </p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+              Teste o webhook na Kiwify para ver os logs aqui
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {products.map((product) => (
+            {webhookLogs.map((log) => (
               <div
-                key={product.id}
-                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                key={log.id}
+                className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
               >
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    {product.product_name}
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    ID: {product.product_id}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => toggleProductAccess(product.id, product.grant_access)}
-                    className={`px-4 py-2 rounded-lg flex items-center ${
-                      product.grant_access
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                        : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                    }`}
-                  >
-                    {product.grant_access ? (
-                      <>
-                        <Check className="h-4 w-4 mr-1" />
-                        Ativo
-                      </>
-                    ) : (
-                      <>
-                        <X className="h-4 w-4 mr-1" />
-                        Inativo
-                      </>
+                <div className="flex items-start space-x-3 flex-1">
+                  <div className="mt-1">
+                    {getStatusIcon(log.status)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {log.event_type}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        log.status === 'success'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                      }`}>
+                        {log.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {log.customer_email}
+                    </p>
+                    {log.error_message && (
+                      <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                        Erro: {log.error_message}
+                      </p>
                     )}
-                  </button>
-                  <button
-                    onClick={() => deleteProduct(product.id)}
-                    className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
+                  </div>
                 </div>
+                <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap ml-4">
+                  {formatDate(log.created_at)}
+                </span>
               </div>
             ))}
           </div>
@@ -406,16 +315,16 @@ export default function KiwifySettingsPage({ user, profile }: KiwifySettingsPage
       </div>
 
       {/* Info Box */}
-      <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
         <h3 className="font-semibold text-yellow-900 dark:text-yellow-300 mb-2">
           Como funciona:
         </h3>
         <ul className="list-disc list-inside space-y-1 text-sm text-yellow-800 dark:text-yellow-400">
-          <li>Adicione os produtos que devem dar acesso à comunidade (ex: VibeCoding)</li>
           <li>Configure o webhook na Kiwify apontando para a URL fornecida acima</li>
           <li>Quando um cliente comprar, ele será cadastrado automaticamente</li>
           <li>O cliente receberá um email para criar sua senha de acesso</li>
           <li>Se houver reembolso, o acesso será removido automaticamente</li>
+          <li>Todos os eventos serão registrados nos logs acima</li>
         </ul>
       </div>
     </div>

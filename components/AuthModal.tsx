@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Logo from './Logo'
@@ -12,6 +13,7 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+  const router = useRouter()
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,10 +39,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         toast.success('Login realizado com sucesso!')
         
         // Aguardar um pouco para garantir que a sessão foi salva
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
-        // Recarregar a página para garantir que a sessão seja reconhecida
-        window.location.href = '/'
+        // Usar router.refresh() para forçar atualização
+        router.refresh()
+        router.push('/')
       } else {
         // Registro
         const { data, error } = await supabase.auth.signUp({

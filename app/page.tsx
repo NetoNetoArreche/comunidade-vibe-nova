@@ -70,26 +70,23 @@ export default function Home() {
 
     // Listener para mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event, 'Session:', session)
+      console.log('Auth event:', event)
       
-      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      // Apenas processar SIGNED_IN (login manual)
+      if (event === 'SIGNED_IN') {
         if (session) {
-          console.log('Usuário logado, carregando dados...')
+          console.log('Usuário fez login, carregando dados...')
           setLoading(true)
           await getUser()
-        } else {
-          console.log('Sem sessão ativa')
-          setLoading(false)
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('Usuário deslogado')
         setUser(null)
         setProfile(null)
         setLoading(false)
-      } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        // Não fazer nada, apenas ignorar esses eventos
-        console.log('Token refreshed ou user updated - ignorando')
       }
+      // Ignorar todos os outros eventos (INITIAL_SESSION, TOKEN_REFRESHED, etc)
+      // O getUser() inicial já carrega os dados
     })
 
     return () => {

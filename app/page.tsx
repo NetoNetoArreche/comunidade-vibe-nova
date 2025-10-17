@@ -29,18 +29,19 @@ export default function Home() {
   const [spaces, setSpaces] = useState<Space[]>([])
   const [selectedSpace, setSelectedSpace] = useState<string | null>(null)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
-  const [currentPage, setCurrentPage] = useState<PageType>(() => {
-    // Carregar página salva do localStorage ou usar 'home' como padrão
-    if (typeof window !== 'undefined') {
-      const savedPage = localStorage.getItem('currentPage') as PageType
-      return savedPage || 'home'
-    }
-    return 'home'
-  })
+  const [currentPage, setCurrentPage] = useState<PageType>('home')
 
   useEffect(() => {
     getUser()
     getSpaces()
+    
+    // Carregar página salva do localStorage
+    if (typeof window !== 'undefined') {
+      const savedPage = localStorage.getItem('currentPage') as PageType
+      if (savedPage) {
+        setCurrentPage(savedPage)
+      }
+    }
     
     // Verificar se há parâmetro de perfil na URL
     const urlParams = new URLSearchParams(window.location.search)
@@ -57,16 +58,15 @@ export default function Home() {
         loadProfileById(profileId)
       }
     }
-    // Se não há parâmetro, manter a página atual (do localStorage)
   }, [])
 
   // Limpar localStorage se usuário não estiver logado
   useEffect(() => {
-    if (!user && !loading) {
+    if (!user && !loading && currentPage !== 'home') {
       localStorage.removeItem('currentPage')
       setCurrentPage('home')
     }
-  }, [user, loading])
+  }, [user, loading, currentPage])
   async function getUser() {
     const { data: { user } } = await supabase.auth.getUser()
     setUser(user)

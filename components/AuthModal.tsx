@@ -36,7 +36,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
         toast.success('Login realizado com sucesso!')
         onClose()
-        window.location.reload()
+        // Não precisa reload - o listener onAuthStateChange vai detectar
       } else {
         // Registro
         const { data, error } = await supabase.auth.signUp({
@@ -57,7 +57,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         } else {
           toast.success('Conta criada com sucesso!')
           onClose()
-          window.location.reload()
+          // Não precisa reload - o listener onAuthStateChange vai detectar
         }
       }
     } catch (error: any) {

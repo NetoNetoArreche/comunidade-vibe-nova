@@ -58,6 +58,20 @@ export default function Home() {
         loadProfileById(profileId)
       }
     }
+
+    // Listener para mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        getUser()
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setProfile(null)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   // Limpar localStorage se usuário não estiver logado

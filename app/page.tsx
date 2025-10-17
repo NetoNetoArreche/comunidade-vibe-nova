@@ -33,16 +33,8 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState<PageType>('home')
 
   useEffect(() => {
-    getUser()
-    getSpaces()
-    
-    // Timeout de segurança para evitar loading infinito
-    const loadingTimeout = setTimeout(() => {
-      if (loading) {
-        console.warn('Loading timeout - forçando fim do loading')
-        setLoading(false)
-      }
-    }, 10000) // 10 segundos
+    // Inicializar
+    loadInitialData()
     
     // Carregar página salva do localStorage
     if (typeof window !== 'undefined') {
@@ -57,43 +49,61 @@ export default function Home() {
     const profileId = urlParams.get('profile')
     
     if (profileId) {
-      // Só mudar para perfil se há parâmetro específico
       setCurrentPage('profile')
       if (profileId === 'own') {
-        // Mostrar próprio perfil
         setViewingProfile(null)
       } else {
-        // Mostrar perfil de outro usuário
         loadProfileById(profileId)
       }
     }
 
-    // Listener para mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event)
-      
-      // Apenas processar SIGNED_IN (login manual)
+    // Listener SIMPLES para auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
-        if (session) {
-          console.log('Usuário fez login, carregando dados...')
-          setLoading(true)
-          await getUser()
-        }
+        loadInitialData()
       } else if (event === 'SIGNED_OUT') {
-        console.log('Usuário deslogado')
         setUser(null)
         setProfile(null)
-        setLoading(false)
       }
-      // Ignorar todos os outros eventos (INITIAL_SESSION, TOKEN_REFRESHED, etc)
-      // O getUser() inicial já carrega os dados
     })
 
-    return () => {
-      clearTimeout(loadingTimeout)
-      subscription.unsubscribe()
-    }
+    return () => subscription.unsubscribe()
   }, [])
+  
+  async function loadInitialData() {
+    try {
+      setLoading(true)
+      
+      // Buscar usuário
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        setLoading(false)
+        return
+      }
+      
+      setUser(user)
+      
+      // Buscar perfil e spaces em paralelo
+      const [profileResult, spacesResult] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('spaces').select('*').order('display_order', { ascending: true })
+      ])
+      
+      if (profileResult.data) {
+        setProfile(profileResult.data)
+      }
+      
+      if (spacesResult.data) {
+        setSpaces(spacesResult.data)
+      }
+      
+      setLoading(false)
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error)
+      setLoading(false)
+    }
+  }
 
   // Limpar localStorage se usuário não estiver logado
   useEffect(() => {
@@ -102,77 +112,12 @@ export default function Home() {
       setCurrentPage('home')
     }
   }, [user, loading, currentPage])
-  async function getUser() {
-    try {
-      console.log('🔍 Buscando usuário...')
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      
-      if (userError) {
-        console.error('❌ Erro ao buscar usuário:', userError)
-        setLoading(false)
-        return
-      }
-      
-      console.log('✅ Usuário encontrado:', user?.email)
-      setUser(user)
-      
-      if (user) {
-        console.log('🔍 Buscando perfil para user ID:', user.id)
-        
-        // Timeout de 5 segundos para busca de perfil
-        const profilePromise = supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single()
-        
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout ao buscar perfil')), 5000)
-        )
-        
-        try {
-          const { data: profile, error: profileError } = await Promise.race([
-            profilePromise,
-            timeoutPromise
-          ]) as any
-          
-          if (profileError) {
-            console.error('❌ Erro ao buscar perfil:', profileError)
-            if (profileError.code === 'PGRST116') {
-              console.log('⚠️ Perfil não encontrado')
-            }
-          } else {
-            console.log('✅ Perfil encontrado:', profile?.username)
-            setProfile(profile)
-          }
-        } catch (timeoutError) {
-          console.error('⏱️ Timeout ao buscar perfil:', timeoutError)
-          // Continua sem perfil
-        }
-      }
-    } catch (error) {
-      console.error('❌ Erro geral:', error)
-    } finally {
-      console.log('✅ Finalizando loading')
-      setLoading(false)
-    }
-  }
-
-  async function getSpaces() {
-    const { data, error } = await supabase
-      .from('spaces')
-      .select('*')
-      .order('display_order', { ascending: true })
-
-    if (error) {
-      console.error('Error fetching spaces:', error)
-    } else {
-      setSpaces(data || [])
-    }
-  }
 
   const handleSpaceSelect = (spaceId: string | null) => {
     setSelectedSpace(spaceId)
+    if (spaceId) {
+      localStorage.setItem('selectedSpace', spaceId)
+    }
   }
 
   const handlePageChange = (page: PageType) => {

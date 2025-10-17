@@ -21,12 +21,12 @@ export async function POST(request: NextRequest) {
     
     console.log('🔔 Webhook Kiwify recebido:', JSON.stringify(body, null, 2))
 
-    const event = body.event || body.type || 'unknown'
-    const data = body.data || body
-    const customerEmail = data.customer?.email || data.email || data.customer_email || 'unknown'
-    const customerName = data.customer?.name || data.name || data.customer_name
-    const orderId = data.order_id || data.id || data.transaction_id
-    const productId = data.product_id || data.product?.id
+    // Estrutura real da Kiwify
+    const event = body.webhook_event_type || body.event || 'unknown'
+    const customerEmail = body.Customer?.email || body.customer?.email || 'unknown'
+    const customerName = body.Customer?.full_name || body.customer?.name || body.Customer?.first_name
+    const orderId = body.order_id || body.id
+    const productId = body.Product?.product_id || body.product_id
 
     // Criar log inicial
     const { data: logData } = await supabase
@@ -68,17 +68,17 @@ export async function POST(request: NextRequest) {
     // Processar eventos
     try {
       switch (event) {
-        case 'compra_aprovada':
-          await handlePurchase(data, body, supabase)
+        case 'order_approved':
+          await handlePurchase(body, body, supabase)
           break
         
-        case 'compra_reembolsada':
+        case 'order_refunded':
         case 'chargeback':
-          await handleRefund(data, body, supabase)
+          await handleRefund(body, body, supabase)
           break
         
         case 'subscription_canceled':
-          await handleRefund(data, body, supabase)
+          await handleRefund(body, body, supabase)
           break
         
         default:
@@ -133,14 +133,14 @@ async function handlePurchase(data: any, fullPayload: any, supabase: ReturnType<
   console.log('💰 Processando compra...')
 
   // Extrair dados (adaptar conforme estrutura real da Kiwify)
-  const orderId = data.order_id || data.id || data.transaction_id
-  const productId = data.product_id || data.product?.id
-  const customerEmail = data.customer?.email || data.email || data.customer_email
-  const customerName = data.customer?.name || data.name || data.customer_name
+  const orderId = data.order_id || data.id
+  const productId = data.Product?.product_id || data.product_id
+  const customerEmail = data.Customer?.email || data.customer?.email
+  const customerName = data.Customer?.full_name || data.customer?.name
 
-  if (!orderId || !productId || !customerEmail) {
-    console.error('❌ Dados incompletos:', { orderId, productId, customerEmail })
-    return
+  if (!orderId || !customerEmail) {
+    console.error('❌ Dados incompletos:', { orderId, customerEmail })
+    throw new Error('Dados incompletos no webhook')
   }
 
   console.log('📧 Email do cliente:', customerEmail)

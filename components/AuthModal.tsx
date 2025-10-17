@@ -35,8 +35,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         if (error) throw error
 
         toast.success('Login realizado com sucesso!')
-        onClose()
-        // Não precisa reload - o listener onAuthStateChange vai detectar
+        
+        // Aguardar um pouco para garantir que a sessão foi salva
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Recarregar a página para garantir que a sessão seja reconhecida
+        window.location.href = '/'
       } else {
         // Registro
         const { data, error } = await supabase.auth.signUp({

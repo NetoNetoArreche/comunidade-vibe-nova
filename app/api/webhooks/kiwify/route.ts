@@ -205,8 +205,8 @@ async function handlePurchase(data: any, fullPayload: any, supabase: ReturnType<
 
     console.log('✅ Perfil criado')
 
-    // Enviar email de boas-vindas
-    await sendWelcomeEmail(customerEmail, customerName)
+    // TODO: Enviar email de boas-vindas
+    // await sendWelcomeEmail(customerEmail, customerName)
   }
 
   // Registrar compra

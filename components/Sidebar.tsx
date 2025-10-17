@@ -456,22 +456,13 @@ export default function Sidebar({ spaces, selectedSpace, onSpaceSelect, user, cu
           </h3>
           <div className="space-y-2">
             <a
-              href="https://github.com"
+              href="https://dashboard.kiwify.com.br/login?redirect=%2Fcourse%2Fpremium%2Fbc811707-8e85-4d22-a8ca-cb1d8d054e0a%3Fmod%3D551de203-35cb-451c-ae1a-bff3562ab73e%26lesson%3D5d6139cf-15e9-4897-b1f3-e5f1dee6cbb6%26sec%3Df3cd9475-13fd-44c2-ba21-f44b95778fd9"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm"
             >
-              <BookOpen className="h-4 w-4 mr-3" />
-              Documentação
-            </a>
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm"
-            >
-              <Users className="h-4 w-4 mr-3" />
-              Suporte
+              <GraduationCap className="h-4 w-4 mr-3" />
+              Aulas Kiwify
             </a>
           </div>
         </div>

@@ -69,6 +69,8 @@ export default function Home() {
 
     // Listener para mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event)
+      
       if (event === 'SIGNED_IN') {
         setLoading(true)
         await getUser()
@@ -76,6 +78,9 @@ export default function Home() {
         setUser(null)
         setProfile(null)
         setLoading(false)
+      } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        // Não fazer nada, apenas ignorar esses eventos
+        console.log('Token refreshed ou user updated - ignorando')
       }
     })
 

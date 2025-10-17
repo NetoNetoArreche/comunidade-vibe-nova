@@ -158,19 +158,20 @@ if (typeof window !== 'undefined') {
   }
 
   // Bloquear eval e Function em produção
-  if (isProduction) {
-    window.eval = function() {
-      console.warn('🚨 eval() bloqueado em produção!')
-      console.warn('🛡️ Chupa seu corno aqui é VIBE CODING 🚀')
-      throw new Error('eval() não permitido')
-    }
-    
-    window.Function = function() {
-      console.warn('🚨 Function() bloqueado em produção!')
-      console.warn('🛡️ Chupa seu corno aqui é VIBE CODING 🚀')
-      throw new Error('Function() não permitido')
-    } as any
-  }
+  // DESABILITADO: Quebra YouTube e outras libs que usam eval
+  // if (isProduction) {
+  //   window.eval = function() {
+  //     console.warn('🚨 eval() bloqueado em produção!')
+  //     console.warn('🛡️ Chupa seu corno aqui é VIBE CODING 🚀')
+  //     throw new Error('eval() não permitido')
+  //   }
+  //   
+  //   window.Function = function() {
+  //     console.warn('🚨 Function() bloqueado em produção!')
+  //     console.warn('🛡️ Chupa seu corno aqui é VIBE CODING 🚀')
+  //     throw new Error('Function() não permitido')
+  //   } as any
+  // }
 }
 
 export {}

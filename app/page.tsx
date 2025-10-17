@@ -18,7 +18,8 @@ import LessonsPage from '@/components/pages/LessonsPage'
 import ProfilePage from '@/components/pages/ProfilePage'
 import AdminPage from '@/components/pages/AdminPage'
 import KiwifySettingsPage from '@/components/pages/KiwifySettingsPage'
-import '@/app/security-console'
+// DESABILITADO TEMPORARIAMENTE - Estava causando problemas
+// import '@/app/security-console'
 import { type PageType } from '@/components/Navigation'
 
 export default function Home() {

@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase environment variables')
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceKey)
+}
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseClient()
   try {
     const body = await request.json()
     
@@ -40,12 +48,12 @@ export async function POST(request: NextRequest) {
       case 'order.paid':
       case 'sale':
       case 'purchase':
-        await handlePurchase(data, body)
+        await handlePurchase(data, body, supabase)
         break
       
       case 'order.refunded':
       case 'refund':
-        await handleRefund(data, body)
+        await handleRefund(data, body, supabase)
         break
       
       default:
@@ -59,7 +67,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handlePurchase(data: any, fullPayload: any) {
+async function handlePurchase(data: any, fullPayload: any, supabase: ReturnType<typeof getSupabaseClient>) {
   console.log('💰 Processando compra...')
 
   // Extrair dados (adaptar conforme estrutura real da Kiwify)
@@ -181,7 +189,7 @@ async function handlePurchase(data: any, fullPayload: any) {
   console.log('🎉 Processamento de compra concluído!')
 }
 
-async function handleRefund(data: any, fullPayload: any) {
+async function handleRefund(data: any, fullPayload: any, supabase: ReturnType<typeof getSupabaseClient>) {
   console.log('💸 Processando reembolso...')
 
   const orderId = data.order_id || data.id || data.transaction_id

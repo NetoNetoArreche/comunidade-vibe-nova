@@ -1,7 +1,7 @@
 // Teste do webhook Kiwify
 const testWebhook = async () => {
   const webhookData = {
-    "order_id": "test-123",
+    "order_id": "test-" + Date.now(),
     "order_ref": "TEST",
     "order_status": "paid",
     "webhook_event_type": "order_approved",
@@ -10,9 +10,9 @@ const testWebhook = async () => {
       "product_name": "Produto Teste"
     },
     "Customer": {
-      "full_name": "João Teste",
-      "first_name": "João",
-      "email": "teste@example.com"
+      "full_name": "Cliente Teste",
+      "first_name": "Cliente",
+      "email": "teste.webhook@gmail.com"  // Use um email real aqui
     }
   };
 

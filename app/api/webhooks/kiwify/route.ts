@@ -177,14 +177,21 @@ async function handlePurchase(data: any, fullPayload: any, supabase: ReturnType<
       email_confirm: true,
       user_metadata: {
         full_name: customerName,
-        from_kiwify: true,
-        needs_password: true
+        from_kiwify: true
       }
     })
+    
+    console.log('🔍 Auth Data:', authData)
+    console.log('🔍 Auth Error:', authError)
 
     if (authError) {
       console.error('❌ Erro ao criar usuário:', authError)
-      return
+      throw new Error(`Erro ao criar usuário: ${authError.message}`)
+    }
+
+    if (!authData?.user) {
+      console.error('❌ Nenhum usuário retornado')
+      throw new Error('Nenhum usuário retornado do Auth')
     }
 
     userId = authData.user.id

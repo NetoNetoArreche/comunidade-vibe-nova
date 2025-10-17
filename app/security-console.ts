@@ -8,6 +8,10 @@ if (typeof window !== 'undefined') {
   const isProduction = process.env.NODE_ENV === 'production'
   
   if (isProduction) {
+    // Salvar referências originais
+    const originalWarn = console.warn
+    const originalError = console.error
+    
     // Sobrescrever métodos do console
     const noop = () => {}
     console.log = noop
@@ -28,8 +32,8 @@ if (typeof window !== 'undefined') {
     console.clear = noop
     
     // Manter apenas warn e error com mensagem genérica
-    console.warn = () => console.warn('⚠️ Aviso')
-    console.error = () => console.error('❌ Erro')
+    console.warn = (...args: any[]) => originalWarn.call(console, '⚠️ Aviso')
+    console.error = (...args: any[]) => originalError.call(console, '❌ Erro')
   }
   
   // Mensagem de aviso no console

@@ -162,9 +162,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Senha
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Senha
+              </label>
+              {isLogin && (
+                <a
+                  href="/auth/reset-password"
+                  className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    router.push('/auth/reset-password')
+                    onClose()
+                  }}
+                >
+                  Esqueci minha senha
+                </a>
+              )}
+            </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input

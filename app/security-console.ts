@@ -100,19 +100,20 @@ if (typeof window !== 'undefined') {
   }
 
   // Proteger contra debugger (apenas em produção)
-  if (isProduction) {
-    setInterval(() => {
-      const start = performance.now()
-      debugger // eslint-disable-line no-debugger
-      const end = performance.now()
-      
-      // Se levou muito tempo, alguém está debugando
-      if (end - start > 100) {
-        console.warn('🚨 Debugger detectado!')
-        console.warn('🛡️ Chupa seu corno aqui é VIBE CODING 🚀')
-      }
-    }, 5000) // A cada 5 segundos para não sobrecarregar
-  }
+  // DESABILITADO: Pode causar problemas de performance e interferir com auth
+  // if (isProduction) {
+  //   setInterval(() => {
+  //     const start = performance.now()
+  //     debugger // eslint-disable-line no-debugger
+  //     const end = performance.now()
+  //     
+  //     // Se levou muito tempo, alguém está debugando
+  //     if (end - start > 100) {
+  //       console.warn('🚨 Debugger detectado!')
+  //       console.warn('🛡️ Chupa seu corno aqui é VIBE CODING 🚀')
+  //     }
+  //   }, 5000) // A cada 5 segundos para não sobrecarregar
+  // }
 
   // Detectar tentativas de injeção de script
   const observer = new MutationObserver((mutations) => {
@@ -142,8 +143,13 @@ if (typeof window !== 'undefined') {
   const originalSetItem = Storage.prototype.setItem
   
   Storage.prototype.setItem = function(key: string, value: string) {
-    // Permitir apenas em desenvolvimento ou para dados não sensíveis
-    if (isProduction && (key.includes('token') || key.includes('password') || key.includes('key'))) {
+    // Permitir Supabase auth tokens (necessário para login funcionar)
+    if (key.startsWith('sb-') || key.includes('supabase')) {
+      return originalSetItem.call(this, key, value)
+    }
+    
+    // Bloquear apenas tentativas suspeitas de armazenar senhas em texto puro
+    if (isProduction && key.includes('password')) {
       console.warn('🚨 Tentativa de armazenar dados sensíveis bloqueada!')
       console.warn('🛡️ Chupa seu corno aqui é VIBE CODING 🚀')
       return

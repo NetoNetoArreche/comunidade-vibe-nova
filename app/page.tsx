@@ -35,6 +35,14 @@ export default function Home() {
     getUser()
     getSpaces()
     
+    // Timeout de segurança para evitar loading infinito
+    const loadingTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn('Loading timeout - forçando fim do loading')
+        setLoading(false)
+      }
+    }, 10000) // 10 segundos
+    
     // Carregar página salva do localStorage
     if (typeof window !== 'undefined') {
       const savedPage = localStorage.getItem('currentPage') as PageType
@@ -64,14 +72,15 @@ export default function Home() {
       if (event === 'SIGNED_IN') {
         setLoading(true)
         await getUser()
-        setLoading(false)
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
         setProfile(null)
+        setLoading(false)
       }
     })
 
     return () => {
+      clearTimeout(loadingTimeout)
       subscription.unsubscribe()
     }
   }, [])
@@ -84,19 +93,28 @@ export default function Home() {
     }
   }, [user, loading, currentPage])
   async function getUser() {
-    const { data: { user } } = await supabase.auth.getUser()
-    setUser(user)
-    
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
       
-      setProfile(profile)
+      if (user) {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        
+        if (error) {
+          console.error('Erro ao buscar perfil:', error)
+        }
+        
+        setProfile(profile)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar usuário:', error)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function getSpaces() {

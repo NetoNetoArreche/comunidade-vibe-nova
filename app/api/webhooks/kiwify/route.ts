@@ -68,14 +68,16 @@ export async function POST(request: NextRequest) {
     // Processar eventos
     try {
       switch (event) {
-        case 'order.paid':
-        case 'sale':
-        case 'purchase':
+        case 'compra_aprovada':
           await handlePurchase(data, body, supabase)
           break
         
-        case 'order.refunded':
-        case 'refund':
+        case 'compra_reembolsada':
+        case 'chargeback':
+          await handleRefund(data, body, supabase)
+          break
+        
+        case 'subscription_canceled':
           await handleRefund(data, body, supabase)
           break
         
@@ -84,10 +86,10 @@ export async function POST(request: NextRequest) {
           if (logId) {
             await supabase
               .from('kiwify_webhook_logs')
-              .update({ status: 'error', error_message: `Evento não tratado: ${event}` })
+              .update({ status: 'success', error_message: `Evento recebido mas não processado: ${event}` })
               .eq('id', logId)
           }
-          return NextResponse.json({ success: true, message: 'Event not handled' })
+          return NextResponse.json({ success: true, message: 'Event received but not processed' })
       }
 
       // Atualizar log como sucesso
@@ -143,21 +145,7 @@ async function handlePurchase(data: any, fullPayload: any, supabase: ReturnType<
 
   console.log('📧 Email do cliente:', customerEmail)
   console.log('🛒 Produto:', productId)
-
-  // Verificar se o produto está vinculado
-  const { data: product } = await supabase
-    .from('kiwify_products')
-    .select('*')
-    .eq('product_id', productId)
-    .eq('grant_access', true)
-    .single()
-
-  if (!product) {
-    console.log('⚠️ Produto não vinculado ou sem permissão de acesso:', productId)
-    return
-  }
-
-  console.log('✅ Produto vinculado encontrado:', product.product_name)
+  console.log('✅ Processando compra para dar acesso à comunidade')
 
   // Buscar ou criar usuário
   let userId: string | null = null
@@ -241,7 +229,7 @@ async function handlePurchase(data: any, fullPayload: any, supabase: ReturnType<
       .insert({
         user_id: userId,
         type: 'purchase',
-        content: `Bem-vindo à comunidade! Sua compra de ${product.product_name} foi confirmada.`,
+        content: `Bem-vindo à comunidade! Sua compra foi confirmada e você já tem acesso.`,
         is_read: false
       })
   }

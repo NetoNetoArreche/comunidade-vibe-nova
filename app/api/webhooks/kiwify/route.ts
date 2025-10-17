@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { sendWelcomeEmail } from '@/lib/email'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -172,8 +173,12 @@ async function handlePurchase(data: any, fullPayload: any, supabase: ReturnType<
     // Criar novo usuário no Auth
     console.log('🆕 Criando novo usuário...')
     
+    // Gerar senha temporária aleatória
+    const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12)
+    
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: customerEmail,
+      password: tempPassword,
       email_confirm: true,
       user_metadata: {
         full_name: customerName,
@@ -212,8 +217,9 @@ async function handlePurchase(data: any, fullPayload: any, supabase: ReturnType<
 
     console.log('✅ Perfil criado')
 
-    // TODO: Enviar email de boas-vindas
-    // await sendWelcomeEmail(customerEmail, customerName)
+    // Enviar email de boas-vindas
+    await sendWelcomeEmail(customerEmail, customerName || 'Cliente')
+    console.log('📧 Email de boas-vindas enviado')
   }
 
   // Registrar compra

@@ -104,25 +104,56 @@ export default function Home() {
   }, [user, loading, currentPage])
   async function getUser() {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      console.log('🔍 Buscando usuário...')
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError) {
+        console.error('❌ Erro ao buscar usuário:', userError)
+        setLoading(false)
+        return
+      }
+      
+      console.log('✅ Usuário encontrado:', user?.email)
       setUser(user)
       
       if (user) {
-        const { data: profile, error } = await supabase
+        console.log('🔍 Buscando perfil para user ID:', user.id)
+        
+        // Timeout de 5 segundos para busca de perfil
+        const profilePromise = supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single()
         
-        if (error) {
-          console.error('Erro ao buscar perfil:', error)
-        }
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout ao buscar perfil')), 5000)
+        )
         
-        setProfile(profile)
+        try {
+          const { data: profile, error: profileError } = await Promise.race([
+            profilePromise,
+            timeoutPromise
+          ]) as any
+          
+          if (profileError) {
+            console.error('❌ Erro ao buscar perfil:', profileError)
+            if (profileError.code === 'PGRST116') {
+              console.log('⚠️ Perfil não encontrado')
+            }
+          } else {
+            console.log('✅ Perfil encontrado:', profile?.username)
+            setProfile(profile)
+          }
+        } catch (timeoutError) {
+          console.error('⏱️ Timeout ao buscar perfil:', timeoutError)
+          // Continua sem perfil
+        }
       }
     } catch (error) {
-      console.error('Erro ao buscar usuário:', error)
+      console.error('❌ Erro geral:', error)
     } finally {
+      console.log('✅ Finalizando loading')
       setLoading(false)
     }
   }

@@ -46,10 +46,13 @@ export async function POST(request: NextRequest) {
     logId = logData?.id || null
 
     // Verificar se a integração está ativa
-    const { data: settings } = await supabase
+    const { data: settings, error: settingsError } = await supabase
       .from('kiwify_settings')
       .select('*')
       .single()
+
+    console.log('⚙️ Settings:', settings)
+    console.log('⚙️ Settings Error:', settingsError)
 
     if (!settings || !settings.is_active) {
       console.log('❌ Integração Kiwify não está ativa')

@@ -1,4 +1,4 @@
-// File: C:\Users\helio\OneDrive\Documentos\COMUNIDADE\app\page.tsx
+// File: C:\Users\helio\OneDrive\Documentos\COMUNIDADE\comunidade-vibe-nova\app\page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

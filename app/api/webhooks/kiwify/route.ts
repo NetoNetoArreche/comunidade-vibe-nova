@@ -310,50 +310,9 @@ async function handleRefund(data: any, fullPayload: any, supabase: ReturnType<ty
         is_read: false
       })
 
-    // Enviar email de reembolso
-    await sendRefundEmail(purchase.customer_email, purchase.customer_name)
+    // TODO: Enviar email de reembolso
+    console.log('📧 Reembolso processado para:', purchase.customer_email)
   }
 
   console.log('✅ Reembolso processado!')
-}
-
-async function sendWelcomeEmail(email: string, name: string) {
-  console.log('📧 Enviando email de boas-vindas para:', email)
-  
-  // TODO: Implementar envio de email real
-  // Por enquanto, apenas log
-  
-  const resetLink = `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password?email=${encodeURIComponent(email)}`
-  
-  console.log('🔗 Link para criar senha:', resetLink)
-  console.log(`
-    Olá ${name}!
-    
-    Bem-vindo à comunidade!
-    
-    Sua compra foi confirmada e sua conta foi criada.
-    
-    Para acessar, você precisa criar uma senha:
-    ${resetLink}
-    
-    Seu email de acesso é: ${email}
-    
-    Qualquer dúvida, estamos à disposição!
-  `)
-}
-
-async function sendRefundEmail(email: string, name: string) {
-  console.log('📧 Enviando email de reembolso para:', email)
-  
-  // TODO: Implementar envio de email real
-  
-  console.log(`
-    Olá ${name}!
-    
-    Seu reembolso foi processado com sucesso.
-    
-    Seu acesso à comunidade foi removido conforme solicitado.
-    
-    Se tiver alguma dúvida, entre em contato conosco.
-  `)
 }

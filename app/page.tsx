@@ -60,9 +60,11 @@ export default function Home() {
     }
 
     // Listener para mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN') {
-        getUser()
+        setLoading(true)
+        await getUser()
+        setLoading(false)
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
         setProfile(null)

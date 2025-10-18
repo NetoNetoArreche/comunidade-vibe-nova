@@ -8,6 +8,7 @@ import InstallPWA from '@/components/InstallPWA'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://www.comunidadevibecoding.com'),
   title: 'Vibe Coding',
   description: 'Uma comunidade moderna para desenvolvedores apaixonados por IA e programação',
   keywords: ['IA', 'programação', 'desenvolvimento', 'comunidade', 'tecnologia', 'vibe', 'coding'],

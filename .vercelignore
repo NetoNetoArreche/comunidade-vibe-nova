@@ -1,11 +1,4 @@
-node_modules
-.next
-.env*.local
+.env.local
 .git
 *.log
 .DS_Store
-.vscode
-.idea
-coverage
-dist
-tmp

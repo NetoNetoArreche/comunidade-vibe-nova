@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase, type Profile } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js'
 import { 
@@ -43,6 +43,72 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
   const [showNotifications, setShowNotifications] = useState(false)
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [spaces, setSpaces] = useState<any[]>([])
+  const isInitialLoadRef = useRef(true)
+
+  // Função para tocar som de notificação
+  const playNotificationSound = async () => {
+    console.log('🔊 Tentando tocar som de notificação...')
+    
+    try {
+      // Primeiro, tentar com áudio simples (mais compatível)
+      const audio = new Audio()
+      
+      // Criar um som de notificação usando data URL
+      const audioData = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT'
+      
+      audio.src = audioData
+      audio.volume = 0.3
+      
+      const playPromise = audio.play()
+      
+      if (playPromise !== undefined) {
+        await playPromise
+        console.log('✅ Som tocado com sucesso!')
+      }
+      
+    } catch (audioError) {
+      console.warn('❌ Áudio simples falhou:', audioError)
+      
+      // Fallback: Web Audio API
+      try {
+        console.log('🔄 Tentando Web Audio API...')
+        
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+        
+        // Verificar se o contexto precisa ser resumido (política do navegador)
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume()
+        }
+        
+        // Criar oscilador simples
+        const oscillator = audioContext.createOscillator()
+        const gainNode = audioContext.createGain()
+        
+        oscillator.connect(gainNode)
+        gainNode.connect(audioContext.destination)
+        
+        // Som simples e alto
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime)
+        oscillator.type = 'sine'
+        
+        // Volume mais alto para teste
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime)
+        gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.01)
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3)
+        
+        oscillator.start(audioContext.currentTime)
+        oscillator.stop(audioContext.currentTime + 0.3)
+        
+        console.log('✅ Web Audio API funcionou!')
+        
+      } catch (webAudioError) {
+        console.error('❌ Web Audio API também falhou:', webAudioError)
+        
+        // Último recurso: alert (só para debug)
+        console.log('🚨 Todos os métodos de áudio falharam. Notificação chegou mas sem som.')
+      }
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -51,6 +117,8 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
       
       // Realtime subscription para notificações
       console.log('🔄 Configurando realtime para notificações')
+      console.log('👤 User ID:', user.id)
+      
       const channel = supabase
         .channel('notifications')
         .on(
@@ -63,10 +131,21 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
           },
           (payload) => {
             console.log('🔔 Nova notificação recebida:', payload)
+            console.log('🕐 isInitialLoad:', isInitialLoadRef.current)
+            
+            // Tocar som apenas se não for o carregamento inicial
+            if (!isInitialLoadRef.current) {
+              console.log('🔊 Chamando playNotificationSound...')
+              playNotificationSound()
+            } else {
+              console.log('⏳ Pulando som (ainda no carregamento inicial)')
+            }
             getNotifications()
           }
         )
-        .subscribe()
+        .subscribe((status) => {
+          console.log('📡 Status da conexão realtime:', status)
+        })
 
       return () => {
         console.log('🔌 Desconectando realtime de notificações')
@@ -74,6 +153,16 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
       }
     }
   }, [user])
+
+  // Marcar que o carregamento inicial terminou após 5 segundos
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log('⏰ Carregamento inicial finalizado - som habilitado')
+      isInitialLoadRef.current = false
+    }, 5000)
+
+    return () => clearTimeout(timer)
+  }, [])
 
   // Fechar menus ao clicar fora
   useEffect(() => {
@@ -410,6 +499,7 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
           <div className="flex items-center space-x-3">
             {user ? (
               <>
+
                 {/* Notifications */}
                 <div className="relative notifications-container">
                   <button 

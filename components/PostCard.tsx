@@ -472,10 +472,30 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
           console.log(`✅ Like adicionado. Novo total: ${newCount}`)
           return newCount
         })
+
+        // Criar notificação para o autor do post (se não for o próprio usuário)
+        if (post.author_id !== currentUser.id) {
+          try {
+            await supabase
+              .from('notifications')
+              .insert({
+                user_id: post.author_id,
+                type: 'like',
+                content: `${profile?.full_name || profile?.username || 'Alguém'} curtiu seu post`,
+                related_post_id: post.id,
+                related_user_id: currentUser.id,
+                is_read: false
+              })
+            console.log('✅ Notificação de like criada')
+          } catch (notifError) {
+            console.warn('⚠️ Erro ao criar notificação de like:', notifError)
+          }
+        }
+
         toast.success('Post curtido!')
       }
     } catch (error) {
-      console.error('❌ Erro inesperado ao curtir:', error)
+      console.error('❌ Erro geral ao processar curtida:', error)
       toast.error('Erro ao processar curtida')
     }
   }
@@ -680,6 +700,26 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
         console.log(`💬 Comentário adicionado. Novo total: ${newCount}`)
         return newCount
       })
+      
+      // Criar notificação para o autor do post (se não for o próprio usuário)
+      if (post.author_id !== currentUser.id) {
+        try {
+          await supabase
+            .from('notifications')
+            .insert({
+              user_id: post.author_id,
+              type: 'comment',
+              content: `${profile?.full_name || profile?.username || 'Alguém'} comentou no seu post`,
+              related_post_id: post.id,
+              related_user_id: currentUser.id,
+              is_read: false
+            })
+          console.log('✅ Notificação de comentário criada')
+        } catch (notifError) {
+          console.warn('⚠️ Erro ao criar notificação de comentário:', notifError)
+        }
+      }
+      
       setNewComment('')
       toast.success('Comentário adicionado!')
     } else {

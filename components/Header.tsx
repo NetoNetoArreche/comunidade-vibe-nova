@@ -75,6 +75,28 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
     }
   }, [user])
 
+  // Fechar menus ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as HTMLElement
+      
+      if (showUserMenu && !target.closest('.user-menu-container')) {
+        setShowUserMenu(false)
+      }
+      
+      if (showNotifications && !target.closest('.notifications-container')) {
+        setShowNotifications(false)
+      }
+    }
+
+    if (showUserMenu || showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showUserMenu, showNotifications])
+
   async function getSpaces() {
     const { data } = await supabase
       .from('spaces')
@@ -389,7 +411,7 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
             {user ? (
               <>
                 {/* Notifications */}
-                <div className="relative">
+                <div className="relative notifications-container">
                   <button 
                     onClick={() => setShowNotifications(!showNotifications)}
                     className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -460,7 +482,7 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
                 </div>
 
                 {/* User Menu */}
-                <div className="relative">
+                <div className="relative user-menu-container">
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -491,12 +513,6 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
                       >
                         <UserIcon className="h-4 w-4 mr-3" />
                         Meu Perfil
-                      </button>
-                      <button
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 text-left"
-                      >
-                        <Settings className="h-4 w-4 mr-3" />
-                        Configurações
                       </button>
                       {user?.email === 'helioarreche@gmail.com' && (
                         <>

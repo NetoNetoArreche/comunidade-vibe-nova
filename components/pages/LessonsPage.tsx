@@ -75,19 +75,28 @@ export default function LessonsPage({ user, onViewProfile }: LessonsPageProps) {
 
       // Check if user has voted
       if (user && data) {
-        const { data: votesData } = await supabase
-          .from('lesson_votes')
-          .select('suggestion_id')
-          .eq('user_id', user.id)
+        try {
+          const { data: votesData } = await supabase
+            .from('lesson_votes')
+            .select('suggestion_id')
+            .eq('user_id', user.id)
 
-        const votedIds = new Set(votesData?.map(v => v.suggestion_id) || [])
+          const votedIds = new Set(votesData?.map(v => v.suggestion_id) || [])
 
-        const lessonsWithVotes = data.map(lesson => ({
-          ...lesson,
-          user_has_voted: votedIds.has(lesson.id)
-        }))
+          const lessonsWithVotes = data.map(lesson => ({
+            ...lesson,
+            user_has_voted: votedIds.has(lesson.id)
+          }))
 
-        setLessons(lessonsWithVotes)
+          setLessons(lessonsWithVotes)
+        } catch (error) {
+          // If lesson_votes table doesn't exist, just show lessons without vote status
+          console.warn('lesson_votes table not found, votes tracking disabled')
+          setLessons(data.map(lesson => ({
+            ...lesson,
+            user_has_voted: false
+          })))
+        }
       } else {
         setLessons(data || [])
       }
@@ -142,33 +151,63 @@ export default function LessonsPage({ user, onViewProfile }: LessonsPageProps) {
 
     try {
       if (lesson.user_has_voted) {
-        // Remove vote
-        const { error } = await supabase
-          .from('lesson_votes')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('suggestion_id', lessonId)
+        // Remove vote - update lesson votes count
+        const { error: updateError } = await supabase
+          .from('lesson_suggestions')
+          .update({ 
+            votes: Math.max(0, (lesson.votes || 0) - 1)
+          })
+          .eq('id', lessonId)
 
-        if (error) throw error
+        if (updateError) {
+          console.error('Error updating votes:', updateError)
+          throw updateError
+        }
+
+        // Try to remove from lesson_votes table (ignore errors if table doesn't exist)
+        try {
+          await supabase
+            .from('lesson_votes')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('suggestion_id', lessonId)
+        } catch (voteError) {
+          console.warn('Could not update lesson_votes table:', voteError)
+        }
 
         // Update local state
         setLessons(lessons.map(l => 
           l.id === lessonId 
-            ? { ...l, votes: (l.votes || 0) - 1, user_has_voted: false }
+            ? { ...l, votes: Math.max(0, (l.votes || 0) - 1), user_has_voted: false }
             : l
         ))
 
         toast.success('Voto removido')
       } else {
-        // Add vote
-        const { error } = await supabase
-          .from('lesson_votes')
-          .insert({
-            user_id: user.id,
-            suggestion_id: lessonId
+        // Add vote - update lesson votes count
+        const { error: updateError } = await supabase
+          .from('lesson_suggestions')
+          .update({ 
+            votes: (lesson.votes || 0) + 1
           })
+          .eq('id', lessonId)
 
-        if (error) throw error
+        if (updateError) {
+          console.error('Error updating votes:', updateError)
+          throw updateError
+        }
+
+        // Try to add to lesson_votes table (ignore errors if table doesn't exist)
+        try {
+          await supabase
+            .from('lesson_votes')
+            .insert({
+              user_id: user.id,
+              suggestion_id: lessonId
+            })
+        } catch (voteError) {
+          console.warn('Could not update lesson_votes table:', voteError)
+        }
 
         // Update local state
         setLessons(lessons.map(l => 
@@ -181,7 +220,7 @@ export default function LessonsPage({ user, onViewProfile }: LessonsPageProps) {
       }
     } catch (error) {
       console.error('Error voting:', error)
-      toast.error('Erro ao registrar voto')
+      toast.error('Erro ao registrar voto. Tente novamente.')
     }
   }
 

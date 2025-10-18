@@ -22,6 +22,18 @@ export default function PostModal({ postId, currentUser, profile, spaces, onClos
     fetchPost()
   }, [postId])
 
+  // Fechar com ESC
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+    
+    document.addEventListener('keydown', handleEsc)
+    return () => document.removeEventListener('keydown', handleEsc)
+  }, [onClose])
+
   async function fetchPost() {
     try {
       // Buscar post
@@ -58,7 +70,7 @@ export default function PostModal({ postId, currentUser, profile, spaces, onClos
       // Buscar stats
       const { data: statsData } = await supabase
         .from('post_stats')
-        .select('likes_count, comments_count')
+        .select('like_count, comment_count')
         .eq('post_id', postData.id)
         .single()
 
@@ -78,8 +90,8 @@ export default function PostModal({ postId, currentUser, profile, spaces, onClos
         ...postData,
         author: authorData,
         space: spaceData,
-        likes_count: statsData?.likes_count || 0,
-        comments_count: statsData?.comments_count || 0,
+        like_count: statsData?.like_count || 0,
+        comment_count: statsData?.comment_count || 0,
         user_has_liked: userHasLiked
       }
 
@@ -122,15 +134,23 @@ export default function PostModal({ postId, currentUser, profile, spaces, onClos
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
+    >
       <div className="bg-transparent w-full max-w-2xl my-8">
         {/* Botão Fechar */}
-        <div className="flex justify-end mb-2">
+        <div className="flex justify-end mb-4">
           <button
             onClick={onClose}
-            className="p-2 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-3 bg-white dark:bg-gray-800 rounded-full shadow-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-600 z-10"
+            title="Fechar"
           >
-            <X className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+            <X className="h-6 w-6 text-gray-700 dark:text-gray-200" />
           </button>
         </div>
 

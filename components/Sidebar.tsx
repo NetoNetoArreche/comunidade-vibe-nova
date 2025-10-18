@@ -121,8 +121,10 @@ export default function Sidebar({ spaces, selectedSpace, onSpaceSelect, user, cu
   }
 
   const handleSpaceClick = (spaceId: string) => {
-    onSpaceSelect(spaceId)
-    markSpaceAsViewed(spaceId)
+    handleNavigation(() => {
+      onSpaceSelect(spaceId)
+      markSpaceAsViewed(spaceId)
+    })
   }
 
   async function getSpaceGroups() {
@@ -231,10 +233,10 @@ export default function Sidebar({ spaces, selectedSpace, onSpaceSelect, user, cu
           </button>
 
           <button
-            onClick={() => {
+            onClick={() => handleNavigation(() => {
               onPageChange('chat')
               setUnreadChatMessages(0) // Zerar ao clicar
-            }}
+            })}
             className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors ${
               currentPage === 'chat'
                 ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
@@ -263,7 +265,7 @@ export default function Sidebar({ spaces, selectedSpace, onSpaceSelect, user, cu
           </button>
 
           <button
-            onClick={() => onPageChange('jobs')}
+            onClick={() => handleNavigation(() => onPageChange('jobs'))}
             className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors ${
               currentPage === 'jobs'
                 ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
@@ -275,7 +277,7 @@ export default function Sidebar({ spaces, selectedSpace, onSpaceSelect, user, cu
           </button>
 
           <button
-            onClick={() => onPageChange('leaderboard')}
+            onClick={() => handleNavigation(() => onPageChange('leaderboard'))}
             className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors ${
               currentPage === 'leaderboard'
                 ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
@@ -287,7 +289,7 @@ export default function Sidebar({ spaces, selectedSpace, onSpaceSelect, user, cu
           </button>
 
           <button
-            onClick={() => onPageChange('events')}
+            onClick={() => handleNavigation(() => onPageChange('events'))}
             className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors ${
               currentPage === 'events'
                 ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
@@ -299,7 +301,7 @@ export default function Sidebar({ spaces, selectedSpace, onSpaceSelect, user, cu
           </button>
 
           <button
-            onClick={() => onPageChange('members')}
+            onClick={() => handleNavigation(() => onPageChange('members'))}
             className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors ${
               currentPage === 'members'
                 ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
@@ -311,7 +313,7 @@ export default function Sidebar({ spaces, selectedSpace, onSpaceSelect, user, cu
           </button>
 
           <button
-            onClick={() => onPageChange('projects')}
+            onClick={() => handleNavigation(() => onPageChange('projects'))}
             className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors ${
               currentPage === 'projects'
                 ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
@@ -323,7 +325,7 @@ export default function Sidebar({ spaces, selectedSpace, onSpaceSelect, user, cu
           </button>
 
           <button
-            onClick={() => onPageChange('lessons')}
+            onClick={() => handleNavigation(() => onPageChange('lessons'))}
             className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors ${
               currentPage === 'lessons'
                 ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'

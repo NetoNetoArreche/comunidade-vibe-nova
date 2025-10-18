@@ -225,8 +225,8 @@ export default function EditPostModal({ post, user, profile, spaces, onPostUpdat
           ...fullPost,
           author: author || null,
           space: space,
-          likes_count: post.likes_count || 0,
-          comments_count: post.comments_count || 0,
+          like_count: post.like_count || 0,
+          comment_count: post.comment_count || 0,
           user_has_liked: post.user_has_liked || false
         }
 

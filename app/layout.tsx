@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   description: 'Uma comunidade moderna para desenvolvedores apaixonados por IA e programação',
   keywords: ['IA', 'programação', 'desenvolvimento', 'comunidade', 'tecnologia', 'vibe', 'coding'],
   authors: [{ name: 'Vibe Coding' }],
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
 }
 
 export const viewport: Viewport = {

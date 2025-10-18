@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
@@ -21,6 +21,26 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [allowManualSignup, setAllowManualSignup] = useState(true)
+
+  // Verificar se cadastro manual está permitido
+  useEffect(() => {
+    const checkSettings = async () => {
+      const { data } = await supabase
+        .from('community_settings')
+        .select('allow_manual_signup')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single()
+      
+      if (data) {
+        setAllowManualSignup(data.allow_manual_signup !== undefined ? data.allow_manual_signup : true)
+      }
+    }
+    if (isOpen) {
+      checkSettings()
+    }
+  }, [isOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -212,15 +232,33 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
         {/* Footer */}
         <div className="px-6 pb-6">
-          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-            {isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}
-            <button
-              onClick={toggleMode}
-              className="ml-1 text-primary-600 hover:text-primary-700 font-medium"
-            >
-              {isLogin ? 'Criar conta' : 'Fazer login'}
-            </button>
-          </p>
+          {allowManualSignup ? (
+            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+              {isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}
+              <button
+                onClick={toggleMode}
+                className="ml-1 text-primary-600 hover:text-primary-700 font-medium"
+              >
+                {isLogin ? 'Criar conta' : 'Fazer login'}
+              </button>
+            </p>
+          ) : (
+            isLogin ? (
+              <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+                Cadastro disponível apenas para clientes
+              </p>
+            ) : (
+              <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+                Já tem uma conta?
+                <button
+                  onClick={toggleMode}
+                  className="ml-1 text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  Fazer login
+                </button>
+              </p>
+            )
+          )}
         </div>
       </div>
     </div>

@@ -426,7 +426,8 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
     instagram: '',
     twitter: '',
     youtube: '',
-    allow_signup: true
+    allow_signup: true,
+    allow_manual_signup: false
   })
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [bannerFile, setBannerFile] = useState<File | null>(null)
@@ -708,7 +709,8 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
         instagram: settings.instagram || '',
         twitter: settings.twitter || '',
         youtube: settings.youtube || '',
-        allow_signup: settings.allow_signup !== undefined ? settings.allow_signup : true
+        allow_signup: settings.allow_signup !== undefined ? settings.allow_signup : true,
+        allow_manual_signup: settings.allow_manual_signup !== undefined ? settings.allow_manual_signup : false
       })
     } else {
       console.log('⚠️ Nenhuma configuração encontrada')
@@ -1391,17 +1393,36 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
                 Outras Configurações
               </h3>
               
-              <label className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  checked={settings.allow_signup}
-                  onChange={(e) => setSettings({ ...settings, allow_signup: e.target.checked })}
-                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Permitir novos cadastros
-                </span>
-              </label>
+              <div className="space-y-4">
+                <label className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={settings.allow_signup}
+                    onChange={(e) => setSettings({ ...settings, allow_signup: e.target.checked })}
+                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Permitir novos cadastros
+                  </span>
+                </label>
+
+                <label className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={settings.allow_manual_signup || false}
+                    onChange={(e) => setSettings({ ...settings, allow_manual_signup: e.target.checked })}
+                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Permitir cadastro manual
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Se desativado, apenas usuários da Kiwify poderão se cadastrar
+                    </span>
+                  </div>
+                </label>
+              </div>
             </div>
 
             {/* Save Button */}

@@ -45,6 +45,12 @@ self.addEventListener('fetch', (event) => {
   // Ignorar requisições não-GET
   if (event.request.method !== 'GET') return
 
+  // Ignorar chrome-extension e outras URLs não-http
+  const url = new URL(event.request.url)
+  if (!url.protocol.startsWith('http')) {
+    return
+  }
+
   // Ignorar requisições de API do Supabase (sempre buscar da rede)
   if (event.request.url.includes('supabase.co')) {
     return
@@ -53,12 +59,20 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
+        // Só cachear respostas válidas
+        if (!response || response.status !== 200 || response.type === 'error') {
+          return response
+        }
+
         // Clonar a resposta
         const responseClone = response.clone()
         
         // Cachear a resposta
         caches.open(RUNTIME_CACHE).then((cache) => {
-          cache.put(event.request, responseClone)
+          cache.put(event.request, responseClone).catch((err) => {
+            // Ignorar erros de cache silenciosamente
+            console.log('Cache put error (ignored):', err.message)
+          })
         })
         
         return response

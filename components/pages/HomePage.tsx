@@ -74,15 +74,15 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
             if (postId) {
               const { data: statsData } = await supabase
                 .from('post_stats')
-                .select('likes_count')
-                .eq('post_id', postId)
+                .select('like_count')
+                .eq('id', postId)
                 .single()
 
               if (statsData) {
                 setPosts(prevPosts =>
                   prevPosts.map(post =>
                     post.id === postId
-                      ? { ...post, likes_count: statsData.likes_count }
+                      ? { ...post, like_count: statsData.like_count }
                       : post
                   )
                 )
@@ -112,15 +112,15 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
             if (postId) {
               const { data: statsData } = await supabase
                 .from('post_stats')
-                .select('comments_count')
-                .eq('post_id', postId)
+                .select('comment_count')
+                .eq('id', postId)
                 .single()
 
               if (statsData) {
                 setPosts(prevPosts =>
                   prevPosts.map(post =>
                     post.id === postId
-                      ? { ...post, comments_count: statsData.comments_count }
+                      ? { ...post, comment_count: statsData.comment_count }
                       : post
                   )
                 )
@@ -201,8 +201,8 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
         .filter(id => id !== null && id !== undefined)
       const { data: statsData } = await supabase
         .from('post_stats')
-        .select('post_id, likes_count, comments_count')
-        .in('post_id', postIds)
+        .select('id, like_count, comment_count')
+        .in('id', postIds)
 
       // Verificar se o usuário curtiu os posts (se logado)
       let userLikes: any[] = []
@@ -220,15 +220,15 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
       const transformedData = postsData.map((post: any) => {
         const author = authorsData?.find(a => a.id === post.author_id)
         const space = spacesData?.find(s => s.id === post.space_id)
-        const stats = statsData?.find(s => s.post_id === post.id)
+        const stats = statsData?.find(s => s.id === post.id)
         const userHasLiked = userLikes.some(like => like.post_id === post.id)
         
         return {
           ...post,
           author: author || null,
           space: space || null,
-          likes_count: stats?.likes_count || 0,
-          comments_count: stats?.comments_count || 0,
+          like_count: stats?.like_count || 0,
+          comment_count: stats?.comment_count || 0,
           user_has_liked: userHasLiked
         }
       })
@@ -271,8 +271,8 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
 
       const { data: statsData } = await supabase
         .from('post_stats')
-        .select('post_id, likes_count, comments_count')
-        .eq('post_id', newPostData.id)
+        .select('id, like_count, comment_count')
+        .eq('id', newPostData.id)
         .single()
 
       let userHasLiked = false
@@ -290,8 +290,8 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
         ...newPostData,
         author: authorData,
         space: spaceData,
-        likes_count: statsData?.likes_count || 0,
-        comments_count: statsData?.comments_count || 0,
+        like_count: statsData?.like_count || 0,
+        comment_count: statsData?.comment_count || 0,
         user_has_liked: userHasLiked
       }
 
@@ -378,8 +378,8 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
         .filter(id => id !== null && id !== undefined)
       const { data: statsData } = await supabase
         .from('post_stats')
-        .select('post_id, likes_count, comments_count')
-        .in('post_id', postIds)
+        .select('id, like_count, comment_count')
+        .in('id', postIds)
 
       // Verificar se o usuário curtiu os posts (se logado)
       let userLikes: any[] = []
@@ -396,15 +396,15 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
       // Transformar os dados para o formato esperado
       const transformedData = postsData.map((post: any) => {
         const author = authorsData?.find(a => a.id === post.author_id)
-        const stats = statsData?.find(s => s.post_id === post.id)
+        const stats = statsData?.find(s => s.id === post.id)
         const userHasLiked = userLikes.some(like => like.post_id === post.id)
         
         return {
           ...post,
           author: author || null,
           space: spaceData || null,
-          likes_count: stats?.likes_count || 0,
-          comments_count: stats?.comments_count || 0,
+          like_count: stats?.like_count || 0,
+          comment_count: stats?.comment_count || 0,
           user_has_liked: userHasLiked
         }
       })

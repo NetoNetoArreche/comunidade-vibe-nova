@@ -48,6 +48,30 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
     if (user) {
       getNotifications()
       getSpaces()
+      
+      // Realtime subscription para notificações
+      console.log('🔄 Configurando realtime para notificações')
+      const channel = supabase
+        .channel('notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('🔔 Nova notificação recebida:', payload)
+            getNotifications()
+          }
+        )
+        .subscribe()
+
+      return () => {
+        console.log('🔌 Desconectando realtime de notificações')
+        supabase.removeChannel(channel)
+      }
     }
   }, [user])
 
@@ -148,7 +172,12 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
   }
 
   async function getNotifications() {
-    if (!user) return
+    if (!user) {
+      console.log('❌ getNotifications: Usuário não autenticado')
+      return
+    }
+
+    console.log('🔔 Buscando notificações para:', user.id)
 
     const { data, error } = await supabase
       .from('notifications')
@@ -158,9 +187,21 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
       .order('created_at', { ascending: false })
       .limit(10)
 
-    if (!error && data) {
+    console.log('📬 Resultado notificações:', { 
+      error, 
+      count: data?.length || 0,
+      data: data?.slice(0, 3) // Mostrar apenas 3 primeiras
+    })
+
+    if (error) {
+      console.error('❌ Erro ao buscar notificações:', error)
+      return
+    }
+
+    if (data) {
       setNotifications(data)
       setUnreadCount(data.length)
+      console.log(`✅ ${data.length} notificações não lidas carregadas`)
     }
   }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { ExternalLink, Github, Globe, Star, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface FeaturedProject {
@@ -27,6 +28,7 @@ export default function FeaturedProjects() {
   const [projects, setProjects] = useState<FeaturedProject[]>([])
   const [loading, setLoading] = useState(true)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const router = useRouter()
 
   useEffect(() => {
     getFeaturedProjects()
@@ -257,12 +259,6 @@ export default function FeaturedProjects() {
         </div>
       )}
 
-      {/* Ver Todos */}
-      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <button className="w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium">
-          Ver todos os projetos
-        </button>
-      </div>
     </div>
   )
 }

@@ -34,8 +34,8 @@ interface PostCardProps {
 
 export default function PostCard({ post, currentUser, profile, spaces, onPostUpdated, onDelete }: PostCardProps) {
   const [liked, setLiked] = useState(post.user_has_liked || false)
-  const [likesCount, setLikesCount] = useState(post.likes_count || 0)
-  const [commentsCount, setCommentsCount] = useState(post.comments_count || 0)
+  const [likesCount, setLikesCount] = useState(post.like_count || 0)
+  const [commentsCount, setCommentsCount] = useState(post.comment_count || 0)
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
@@ -45,6 +45,7 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [showShareOptions, setShowShareOptions] = useState(false)
   
   const router = useRouter()
   
@@ -53,16 +54,16 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
 
   useEffect(() => {
     // Usar dados que já vêm do post, mas buscar novamente se necessário
-    console.log(`📊 Post ${post.id.substring(0, 8)}... - Likes: ${post.likes_count}, Comments: ${post.comments_count}, User liked: ${post.user_has_liked}`)
+    console.log(`📊 Post ${post.id.substring(0, 8)}... - Likes: ${post.like_count}, Comments: ${post.comment_count}, User liked: ${post.user_has_liked}`)
     
-    if (post.likes_count !== undefined) {
-      setLikesCount(post.likes_count)
+    if (post.like_count !== undefined) {
+      setLikesCount(post.like_count)
     } else {
       getLikesCount()
     }
     
-    if (post.comments_count !== undefined) {
-      setCommentsCount(post.comments_count)
+    if (post.comment_count !== undefined) {
+      setCommentsCount(post.comment_count)
     } else {
       getCommentsCount()
     }
@@ -72,7 +73,7 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
     } else {
       checkIfLiked()
     }
-  }, [post.id, post.likes_count, post.comments_count, post.user_has_liked, currentUser])
+  }, [post.id, post.like_count, post.comment_count, post.user_has_liked, currentUser])
 
   // Monitor showEditModal changes
   useEffect(() => {
@@ -81,6 +82,25 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
       console.log('Modal deveria estar visível agora!')
     }
   }, [showEditModal])
+
+  // Fechar menu de compartilhamento ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (showShareOptions) {
+        const target = event.target as HTMLElement
+        if (!target.closest('.share-menu')) {
+          setShowShareOptions(false)
+        }
+      }
+    }
+
+    if (showShareOptions) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showShareOptions])
 
   // useEffect desabilitado temporariamente
   // useEffect(() => {
@@ -293,8 +313,8 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
             ...data,
             author: post.author,
             space: post.space,
-            likes_count: post.likes_count,
-            comments_count: post.comments_count,
+            like_count: post.like_count,
+            comment_count: post.comment_count,
             user_has_liked: post.user_has_liked
           }
           onPostUpdated(updatedPost)
@@ -382,40 +402,138 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
       return
     }
 
-    if (liked) {
-      // Remove like
-      const { error } = await supabase
-        .from('likes')
-        .delete()
-        .eq('post_id', post.id)
-        .eq('user_id', currentUser.id)
+    console.log('🔄 Toggle like iniciado:', { 
+      postId: post.id, 
+      userId: currentUser.id, 
+      liked,
+      postIdType: typeof post.id,
+      userIdType: typeof currentUser.id
+    })
 
-      if (!error) {
+    try {
+      if (liked) {
+        // Remove like
+        const { error, data } = await supabase
+          .from('likes')
+          .delete()
+          .eq('post_id', post.id)
+          .eq('user_id', currentUser.id)
+          .select()
+
+        console.log('👎 Resultado do delete:', { error, data, errorDetails: error })
+
+        if (error) {
+          console.error('❌ Erro ao remover like:', error)
+          toast.error(`Erro ao remover curtida: ${error.message}`)
+          return
+        }
+
         setLiked(false)
-        setLikesCount(prev => {
+        setLikesCount((prev: number) => {
           const newCount = prev - 1
-          console.log(`👎 Like removido. Novo total: ${newCount}`)
+          console.log(`✅ Like removido. Novo total: ${newCount}`)
           return newCount
         })
-      }
-    } else {
-      // Add like
-      const { error } = await supabase
-        .from('likes')
-        .insert({
+        toast.success('Curtida removida')
+      } else {
+        // Add like - Garantir que apenas post_id e user_id sejam enviados
+        const likeData = {
           post_id: post.id,
-          user_id: currentUser.id
+          user_id: currentUser.id,
+          comment_id: null,
+          project_id: null
+        }
+        
+        console.log('📤 Dados a serem inseridos:', likeData)
+        
+        // Tentar sem .select() primeiro
+        const { error, data } = await supabase
+          .from('likes')
+          .insert(likeData)
+
+        console.log('👍 Resultado do insert:', { 
+          error, 
+          data,
+          errorDetails: error,
+          errorMessage: error?.message,
+          errorCode: error?.code,
+          errorHint: error?.hint
         })
 
-      if (!error) {
+        if (error) {
+          console.error('❌ Erro ao adicionar like:', error)
+          toast.error(`Erro ao curtir post: ${error.message}`)
+          return
+        }
+
         setLiked(true)
-        setLikesCount(prev => {
+        setLikesCount((prev: number) => {
           const newCount = prev + 1
-          console.log(`👍 Like adicionado. Novo total: ${newCount}`)
+          console.log(`✅ Like adicionado. Novo total: ${newCount}`)
           return newCount
         })
+        toast.success('Post curtido!')
       }
+    } catch (error) {
+      console.error('❌ Erro inesperado ao curtir:', error)
+      toast.error('Erro ao processar curtida')
     }
+  }
+
+  function toggleShareOptions() {
+    setShowShareOptions(!showShareOptions)
+  }
+
+  async function copyLink() {
+    try {
+      const postUrl = `${window.location.origin}/post/${post.id}`
+      await navigator.clipboard.writeText(postUrl)
+      toast.success('Link copiado para a área de transferência!')
+      setShowShareOptions(false)
+      console.log('✅ Link copiado para clipboard')
+    } catch (error) {
+      console.error('❌ Erro ao copiar link:', error)
+      // Fallback: mostrar o link para o usuário copiar manualmente
+      const postUrl = `${window.location.origin}/post/${post.id}`
+      prompt('Copie este link para compartilhar:', postUrl)
+    }
+  }
+
+  async function shareNative() {
+    try {
+      const postUrl = `${window.location.origin}/post/${post.id}`
+      const shareText = `Confira este post: ${post.title || post.content.substring(0, 100)}...`
+      
+      if (navigator.share) {
+        await navigator.share({
+          title: post.title || 'Post da Comunidade',
+          text: shareText,
+          url: postUrl
+        })
+        setShowShareOptions(false)
+        console.log('✅ Post compartilhado via Web Share API')
+      } else {
+        toast.error('Compartilhamento nativo não suportado')
+      }
+    } catch (error) {
+      console.error('❌ Erro ao compartilhar:', error)
+    }
+  }
+
+  function shareWhatsApp() {
+    const postUrl = `${window.location.origin}/post/${post.id}`
+    const shareText = `Confira este post: ${post.title || post.content.substring(0, 100)}...`
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + postUrl)}`
+    window.open(whatsappUrl, '_blank')
+    setShowShareOptions(false)
+  }
+
+  function shareTwitter() {
+    const postUrl = `${window.location.origin}/post/${post.id}`
+    const shareText = `Confira este post: ${post.title || post.content.substring(0, 100)}...`
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(postUrl)}`
+    window.open(twitterUrl, '_blank')
+    setShowShareOptions(false)
   }
 
   async function loadComments() {
@@ -445,13 +563,23 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
       // Contar curtidas por comentário e verificar se usuário curtiu
       const commentsWithLikes = commentsData.map(comment => {
         const commentLikes = likesData?.filter(l => l.comment_id === comment.id) || []
+        const likesCount = commentLikes.length
+        const userHasLiked = currentUser ? commentLikes.some(l => l.user_id === currentUser.id) : false
+        
+        console.log(`💬 Comentário ${comment.id.substring(0, 8)}:`, { 
+          likesCount, 
+          userHasLiked,
+          totalLikes: commentLikes.length 
+        })
+        
         return {
           ...comment,
-          likes_count: commentLikes.length,
-          user_has_liked: currentUser ? commentLikes.some(l => l.user_id === currentUser.id) : false
+          likes_count: likesCount,
+          user_has_liked: userHasLiked
         }
       })
       
+      console.log('📝 Comentários carregados:', commentsWithLikes.length)
       setComments(commentsWithLikes)
       setShowComments(true)
     }
@@ -466,39 +594,64 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
     const comment = comments.find(c => c.id === commentId)
     if (!comment) return
 
-    if (comment.user_has_liked) {
-      // Remove like
-      const { error } = await supabase
-        .from('likes')
-        .delete()
-        .eq('comment_id', commentId)
-        .eq('user_id', currentUser.id)
+    console.log('🔄 Toggle comment like iniciado:', { commentId, userId: currentUser.id, liked: comment.user_has_liked })
 
-      if (!error) {
+    try {
+      if (comment.user_has_liked) {
+        // Remove like
+        const { error, data } = await supabase
+          .from('likes')
+          .delete()
+          .eq('comment_id', commentId)
+          .eq('user_id', currentUser.id)
+          .select()
+
+        console.log('👎 Resultado do delete (comentário):', { error, data })
+
+        if (error) {
+          console.error('❌ Erro ao remover like do comentário:', error)
+          toast.error('Erro ao remover curtida')
+          return
+        }
+
         setComments(comments.map(c => 
           c.id === commentId 
             ? { ...c, likes_count: (c.likes_count || 0) - 1, user_has_liked: false }
             : c
         ))
-        console.log(`👎 Like removido do comentário ${commentId.substring(0, 8)}`)
-      }
-    } else {
-      // Add like
-      const { error } = await supabase
-        .from('likes')
-        .insert({
-          comment_id: commentId,
-          user_id: currentUser.id
-        })
+        toast.success('Curtida removida')
+        console.log(`✅ Like removido do comentário ${commentId.substring(0, 8)}`)
+      } else {
+        // Add like - Garantir que apenas comment_id e user_id sejam enviados
+        const { error, data } = await supabase
+          .from('likes')
+          .insert({
+            comment_id: commentId,
+            user_id: currentUser.id,
+            post_id: null,
+            project_id: null
+          })
+          .select()
 
-      if (!error) {
+        console.log('👍 Resultado do insert (comentário):', { error, data })
+
+        if (error) {
+          console.error('❌ Erro ao adicionar like ao comentário:', error)
+          toast.error('Erro ao curtir comentário')
+          return
+        }
+
         setComments(comments.map(c => 
           c.id === commentId 
             ? { ...c, likes_count: (c.likes_count || 0) + 1, user_has_liked: true }
             : c
         ))
-        console.log(`👍 Like adicionado ao comentário ${commentId.substring(0, 8)}`)
+        toast.success('Comentário curtido!')
+        console.log(`✅ Like adicionado ao comentário ${commentId.substring(0, 8)}`)
       }
+    } catch (error) {
+      console.error('❌ Erro inesperado ao curtir comentário:', error)
+      toast.error('Erro ao processar curtida')
     }
   }
 
@@ -746,10 +899,54 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
               <span className="text-sm font-medium">{commentsCount}</span>
             </button>
 
-            <button className="flex items-center space-x-2 text-gray-500 hover:text-primary-600 transition-colors">
-              <Share2 className="h-5 w-5" />
-              <span className="text-sm font-medium">Compartilhar</span>
-            </button>
+            <div className="relative share-menu">
+              <button 
+                onClick={toggleShareOptions}
+                className="flex items-center space-x-2 text-gray-500 hover:text-primary-600 transition-colors"
+              >
+                <Share2 className="h-5 w-5" />
+                <span className="text-sm font-medium">Compartilhar</span>
+              </button>
+
+              {/* Menu de opções de compartilhamento */}
+              {showShareOptions && (
+                <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 min-w-48 z-50">
+                  <button
+                    onClick={copyLink}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                  >
+                    <span>🔗</span>
+                    <span>Copiar link</span>
+                  </button>
+                  
+                  {typeof navigator !== 'undefined' && 'share' in navigator && (
+                    <button
+                      onClick={shareNative}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                    >
+                      <span>📱</span>
+                      <span>Compartilhar</span>
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={shareWhatsApp}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                  >
+                    <span>💬</span>
+                    <span>WhatsApp</span>
+                  </button>
+                  
+                  <button
+                    onClick={shareTwitter}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+                  >
+                    <span>🐦</span>
+                    <span>Twitter</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -851,9 +1048,7 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
                         }`}
                       >
                         <Heart className={`h-4 w-4 ${comment.user_has_liked ? 'fill-current' : ''}`} />
-                        {(comment.likes_count || 0) > 0 && (
-                          <span className="text-xs font-medium">{comment.likes_count}</span>
-                        )}
+                        <span className="text-xs font-medium">{comment.likes_count || 0}</span>
                       </button>
                     </div>
                   </div>

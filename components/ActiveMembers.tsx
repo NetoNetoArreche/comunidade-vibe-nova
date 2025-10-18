@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { Users, Circle } from 'lucide-react'
 
 interface ActiveMember {
@@ -16,6 +17,7 @@ interface ActiveMember {
 export default function ActiveMembers() {
   const [members, setMembers] = useState<ActiveMember[]>([])
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     getActiveMembers()
@@ -69,6 +71,7 @@ export default function ActiveMembers() {
         {members.map((member) => (
           <div
             key={member.id}
+            onClick={() => router.push(`/profile/${member.username || member.id}`)}
             className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
           >
             {/* Avatar */}
@@ -107,12 +110,6 @@ export default function ActiveMembers() {
         ))}
       </div>
 
-      {/* Ver Todos */}
-      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <button className="w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium">
-          Ver todos os membros
-        </button>
-      </div>
     </div>
   )
 }

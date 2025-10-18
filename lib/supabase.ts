@@ -70,8 +70,8 @@ export interface Post {
   is_pinned: boolean | null
   author?: Profile
   space?: Space
-  likes_count?: number
-  comments_count?: number
+  like_count?: number
+  comment_count?: number
   user_has_liked?: boolean
 }
 

@@ -29,20 +29,16 @@ const nextConfig = {
     ],
     formats: ['image/webp', 'image/avif'],
   },
-  // Configurações para resolver problemas de build
-  experimental: {
-    outputFileTracingExcludes: {
-      '*': [
-        'node_modules/@swc/core-linux-x64-gnu',
-        'node_modules/@swc/core-linux-x64-musl',
-        'node_modules/@esbuild/linux-x64',
-      ],
-    },
-  },
+  // Desabilitar output file tracing que está causando problemas
+  output: 'standalone',
   // Otimizações de build
   swcMinify: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
+  },
+  // Configurações experimentais
+  experimental: {
+    outputFileTracingRoot: undefined,
   },
 }
 

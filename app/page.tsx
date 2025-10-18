@@ -18,6 +18,7 @@ import LessonsPage from '@/components/pages/LessonsPage'
 import ProfilePage from '@/components/pages/ProfilePage'
 import AdminPage from '@/components/pages/AdminPage'
 import KiwifySettingsPage from '@/components/pages/KiwifySettingsPage'
+import PostModal from '@/components/PostModal'
 // DESABILITADO TEMPORARIAMENTE - Estava causando problemas
 // import '@/app/security-console'
 import { type PageType } from '@/components/Navigation'
@@ -31,10 +32,18 @@ export default function Home() {
   const [selectedSpace, setSelectedSpace] = useState<string | null>(null)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [currentPage, setCurrentPage] = useState<PageType>('home')
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
 
   useEffect(() => {
     // Inicializar
     loadInitialData()
+    
+    // Expor funções globais para navegação SPA
+    if (typeof window !== 'undefined') {
+      (window as any).navigateToProfile = handleNavigateToProfile;
+      (window as any).navigateToOwnProfile = handleNavigateToOwnProfile;
+    }
     
     // Carregar página salva do localStorage
     if (typeof window !== 'undefined') {
@@ -188,9 +197,59 @@ export default function Home() {
       if (targetProfile) {
         setViewingProfile(targetProfile)
         console.log('Loaded profile for mention:', targetProfile.full_name)
+        return targetProfile
       }
     } catch (error) {
       console.error('Error loading profile by ID:', error)
+    }
+    return null
+  }
+
+  const handlePostClick = (postId: string) => {
+    console.log('🔗 Abrindo post:', postId)
+    setSelectedPostId(postId)
+  }
+
+  const handleNavigateToProfile = async (profileData: any) => {
+    console.log('👤 Navegando para perfil SPA:', profileData)
+    
+    try {
+      setProfileLoading(true)
+      
+      // Primeiro definir o perfil que será visualizado
+      if (profileData.id) {
+        // Se já temos os dados do perfil, usar diretamente
+        if (profileData.full_name || profileData.username) {
+          setViewingProfile(profileData)
+        } else {
+          // Senão, buscar perfil completo
+          const loadedProfile = await loadProfileById(profileData.id)
+          if (!loadedProfile) {
+            console.error('Não foi possível carregar o perfil')
+            return
+          }
+        }
+      } else {
+        // Se não tem ID, usar os dados que temos
+        setViewingProfile(profileData)
+      }
+      
+      // Só depois mudar para a página de perfil
+      setCurrentPage('profile')
+      localStorage.setItem('currentPage', 'profile')
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  const handleNavigateToOwnProfile = () => {
+    console.log('👤 Navegando para próprio perfil SPA')
+    setViewingProfile(null) // null = próprio perfil
+    setCurrentPage('profile')
+    localStorage.setItem('currentPage', 'profile')
+    // Limpar parâmetros da URL
+    if (window.location.search.includes('profile=')) {
+      window.history.replaceState({}, '', window.location.pathname)
     }
   }
 
@@ -223,6 +282,13 @@ export default function Home() {
       case 'lessons':
         return <LessonsPage user={user} onViewProfile={handleViewProfile} />
       case 'profile':
+        if (profileLoading) {
+          return (
+            <div className="flex items-center justify-center min-h-screen">
+              <LoadingSpinner size="large" />
+            </div>
+          )
+        }
         return (
           <ProfilePage 
             user={user} 
@@ -289,6 +355,7 @@ export default function Home() {
         onPageChange={handlePageChange}
         showMobileMenu={showMobileMenu}
         onToggleMobileMenu={() => setShowMobileMenu(!showMobileMenu)}
+        onPostClick={handlePostClick}
       />
       
       <div className="flex">
@@ -307,6 +374,20 @@ export default function Home() {
           {renderCurrentPage()}
         </main>
       </div>
+
+      {/* Post Modal */}
+      {selectedPostId && (
+        <PostModal
+          postId={selectedPostId}
+          currentUser={user}
+          profile={profile}
+          spaces={spaces}
+          onClose={() => setSelectedPostId(null)}
+          onPostUpdated={() => {
+            // Recarregar dados se necessário
+          }}
+        />
+      )}
     </div>
   )
 }

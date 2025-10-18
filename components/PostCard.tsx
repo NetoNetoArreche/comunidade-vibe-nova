@@ -17,7 +17,6 @@ import {
   Send
 } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
@@ -185,8 +184,10 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
         const user = partialUsers[0]
         console.log('Found user (partial):', user)
         
-        // Simular clique no perfil - recarregar página com parâmetro
-        window.location.href = `/?profile=${user.id}`
+        // Navegar para perfil usando SPA
+        if ((window as any).navigateToProfile) {
+          (window as any).navigateToProfile(user)
+        }
         return
       }
 
@@ -194,8 +195,10 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
       const user = users[0]
       console.log('Found user (exact):', user)
       
-      // Simular clique no perfil - recarregar página com parâmetro
-      window.location.href = `/?profile=${user.id}`
+      // Navegar para perfil usando SPA
+      if ((window as any).navigateToProfile) {
+        (window as any).navigateToProfile(user)
+      }
       
     } catch (error) {
       console.error('Error finding user:', error)
@@ -746,7 +749,14 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
       <div className="p-6 pb-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
-            <Link href={`/profile/${post.author?.username || post.author_id}`}>
+            <button 
+              onClick={() => {
+                if ((window as any).navigateToProfile && post.author) {
+                  (window as any).navigateToProfile(post.author)
+                }
+              }}
+              className="hover:opacity-80 transition-opacity"
+            >
               {post.author?.avatar_url ? (
                 <Image
                   src={post.author.avatar_url}
@@ -762,16 +772,20 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
                   </span>
                 </div>
               )}
-            </Link>
+            </button>
             
             <div>
               <div className="flex items-center space-x-2">
-                <Link 
-                  href={`/profile/${post.author?.username || post.author_id}`}
-                  className="font-semibold text-gray-900 dark:text-white hover:underline"
+                <button 
+                  onClick={() => {
+                    if ((window as any).navigateToProfile && post.author) {
+                      (window as any).navigateToProfile(post.author)
+                    }
+                  }}
+                  className="font-semibold text-gray-900 dark:text-white hover:underline text-left"
                 >
                   {post.author?.full_name || post.author?.username || 'Usuário'}
-                </Link>
+                </button>
                 {post.space && (
                   <>
                     <span className="text-gray-400">em</span>
@@ -1052,9 +1066,16 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
                   
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-1">
-                      <span className="font-semibold text-gray-900 dark:text-white text-sm">
+                      <button 
+                        onClick={() => {
+                          if ((window as any).navigateToProfile && comment.author) {
+                            (window as any).navigateToProfile(comment.author)
+                          }
+                        }}
+                        className="font-semibold text-gray-900 dark:text-white text-sm hover:underline text-left"
+                      >
                         {comment.author?.full_name || comment.author?.username || 'Usuário'}
-                      </span>
+                      </button>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {formatDistanceToNow(new Date(comment.created_at), { 
                           addSuffix: true, 

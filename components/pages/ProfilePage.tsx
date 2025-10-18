@@ -22,6 +22,23 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+
+// Helper function para formatar datas de forma segura
+const formatDateSafely = (dateString: string | null | undefined, options?: any) => {
+  if (!dateString) return 'Data não disponível'
+  
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'Data inválida'
+    
+    return formatDistanceToNow(date, options || { 
+      addSuffix: false, 
+      locale: ptBR 
+    })
+  } catch (error) {
+    return 'Data não disponível'
+  }
+}
 import ProjectModal from '@/components/ProjectModal'
 import ProfileStats from '@/components/ProfileStats'
 import EditProfileModal from '@/components/EditProfileModal'
@@ -44,7 +61,9 @@ export default function ProfilePage({ user, profile, onProfileUpdate, onGoBack }
   const isOwnProfile = user && profile && user.id === profile.id
 
   const goToMyProfile = () => {
-    window.location.href = '/?profile=own'
+    if ((window as any).navigateToOwnProfile) {
+      (window as any).navigateToOwnProfile()
+    }
   }
 
   useEffect(() => {
@@ -249,10 +268,7 @@ export default function ProfilePage({ user, profile, onProfileUpdate, onGoBack }
                 <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
                   <Calendar className="h-4 w-4" />
                   <span>
-                    Membro desde {formatDistanceToNow(new Date(profile?.created_at || ''), { 
-                      addSuffix: false, 
-                      locale: ptBR 
-                    })}
+                    Membro desde {formatDateSafely(profile?.created_at)}
                   </span>
                 </div>
               </div>

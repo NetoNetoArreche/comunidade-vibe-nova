@@ -27,9 +27,10 @@ interface HeaderProps {
   onPageChange: (page: PageType) => void
   showMobileMenu?: boolean
   onToggleMobileMenu?: () => void
+  onPostClick?: (postId: string) => void
 }
 
-export default function Header({ user, profile, currentPage, onPageChange, showMobileMenu: externalShowMobileMenu, onToggleMobileMenu }: HeaderProps) {
+export default function Header({ user, profile, currentPage, onPageChange, showMobileMenu: externalShowMobileMenu, onToggleMobileMenu, onPostClick }: HeaderProps) {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const actualShowMobileMenu = externalShowMobileMenu !== undefined ? externalShowMobileMenu : showMobileMenu
@@ -44,6 +45,14 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [spaces, setSpaces] = useState<any[]>([])
   const isInitialLoadRef = useRef(true)
+
+  // Expor função para abrir post
+  useEffect(() => {
+    if (onPostClick) {
+      // Criar uma função global para abrir posts
+      (window as any).openPost = onPostClick
+    }
+  }, [onPostClick])
 
   // Função para tocar som de notificação
   const playNotificationSound = async () => {
@@ -365,8 +374,10 @@ export default function Header({ user, profile, currentPage, onPageChange, showM
     
     switch (result.type) {
       case 'user':
-        // Navegar para perfil do usuário
-        window.location.href = `/profile/${result.username || result.id}`
+        // Navegar para perfil do usuário usando SPA
+        if ((window as any).navigateToProfile) {
+          (window as any).navigateToProfile(result)
+        }
         break
       case 'post':
         // Navegar para home e focar no post

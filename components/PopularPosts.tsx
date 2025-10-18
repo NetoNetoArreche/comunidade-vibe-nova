@@ -23,7 +23,11 @@ interface PopularPost {
   popularity_score?: number
 }
 
-export default function PopularPosts() {
+interface PopularPostsProps {
+  onPostClick?: (postId: string) => void
+}
+
+export default function PopularPosts({ onPostClick }: PopularPostsProps) {
   const [posts, setPosts] = useState<PopularPost[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -57,21 +61,32 @@ export default function PopularPosts() {
         .select('id, full_name, username, avatar_url')
         .in('id', authorIds)
 
-      // Buscar estatísticas da view post_stats
+      // Buscar estatísticas reais das tabelas likes e comments
       const postIds = postsData.map(post => post.id)
-      const { data: statsData } = await supabase
-        .from('post_stats')
-        .select('post_id, likes_count, comments_count')
+      
+      // Contar likes para cada post
+      const { data: likesData } = await supabase
+        .from('likes')
+        .select('post_id')
+        .in('post_id', postIds)
+        .not('post_id', 'is', null)
+
+      // Contar comentários para cada post  
+      const { data: commentsData } = await supabase
+        .from('comments')
+        .select('post_id')
         .in('post_id', postIds)
 
-      console.log('📊 Stats dos posts populares:', statsData)
+      console.log('📊 Likes dos posts populares:', likesData?.length || 0)
+      console.log('📊 Comentários dos posts populares:', commentsData?.length || 0)
 
       // Combinar dados e calcular score de popularidade
       const postsWithScore = postsData.map(post => {
         const author = authorsData?.find(a => a.id === post.author_id)
-        const stats = statsData?.find(s => s.post_id === post.id)
-        const likes = stats?.likes_count || 0
-        const comments = stats?.comments_count || 0
+        
+        // Contar likes e comentários para este post específico
+        const likes = likesData?.filter(like => like.post_id === post.id).length || 0
+        const comments = commentsData?.filter(comment => comment.post_id === post.id).length || 0
         
         return {
           ...post,
@@ -134,6 +149,13 @@ export default function PopularPosts() {
         {posts.map((post, index) => (
           <div
             key={post.id}
+            onClick={() => {
+              if (onPostClick) {
+                onPostClick(post.id)
+              } else if ((window as any).openPost) {
+                (window as any).openPost(post.id)
+              }
+            }}
             className="flex space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
           >
             {/* Ranking Number */}

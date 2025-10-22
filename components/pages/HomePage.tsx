@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase, type Post, type Profile, type Space } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js'
 import PostCard from '@/components/PostCard'
@@ -22,8 +22,33 @@ interface HomePageProps {
 export default function HomePage({ user, profile, spaces, selectedSpace, onSpaceSelect }: HomePageProps) {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const subscriptionsRef = useRef<{ posts: any, likes: any, comments: any } | null>(null)
+  const processedPostsRef = useRef<Set<string>>(new Set())
+
+  // Debug: Log quando posts mudam
+  useEffect(() => {
+    console.log('📊 Posts state mudou:', {
+      count: posts.length,
+      ids: posts.map(p => p.id.substring(0, 8))
+    })
+  }, [posts])
 
   useEffect(() => {
+    console.log('🔄 HomePage useEffect executado:', { selectedSpace, userId: user?.id })
+    
+    // Limpar subscriptions anteriores se existirem
+    if (subscriptionsRef.current) {
+      console.log('🧹 Limpando subscriptions anteriores')
+      subscriptionsRef.current.posts?.unsubscribe()
+      subscriptionsRef.current.likes?.unsubscribe()
+      subscriptionsRef.current.comments?.unsubscribe()
+      subscriptionsRef.current = null
+    }
+    
+    // Limpar posts processados quando o espaço muda
+    processedPostsRef.current.clear()
+    
+    // Carregar posts baseado no espaço selecionado
     if (selectedSpace) {
       getPostsBySpace(selectedSpace)
     } else {
@@ -131,12 +156,22 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
       )
       .subscribe()
 
-    return () => {
-      supabase.removeChannel(postsChannel)
-      supabase.removeChannel(likesChannel)
-      supabase.removeChannel(commentsChannel)
+    // Armazenar referências das subscriptions
+    subscriptionsRef.current = {
+      posts: postsChannel,
+      likes: likesChannel,
+      comments: commentsChannel
     }
-  }, [selectedSpace])
+
+    return () => {
+      // Limpar subscriptions para evitar duplicação
+      console.log('🧹 Cleanup: removendo subscriptions')
+      postsChannel.unsubscribe()
+      likesChannel.unsubscribe()
+      commentsChannel.unsubscribe()
+      subscriptionsRef.current = null
+    }
+  }, [selectedSpace, user?.id])
 
   async function getPosts() {
     console.log('Fetching posts...')
@@ -243,8 +278,14 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
     }
   }
 
-  async function handleNewPost(newPostData: any) {
+  const handleNewPost = useCallback(async (newPostData: any) => {
     console.log('🆕 Novo post detectado:', newPostData)
+    
+    // Verificar se o post já foi processado
+    if (processedPostsRef.current.has(newPostData.id)) {
+      console.log('🔄 Post já foi processado, ignorando:', newPostData.id)
+      return
+    }
     
     // Verificar se o post pertence ao filtro atual
     if (selectedSpace && newPostData.space_id !== selectedSpace) {
@@ -295,8 +336,29 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
         user_has_liked: userHasLiked
       }
 
-      // Adicionar no topo da lista
-      setPosts(prevPosts => [fullPost, ...prevPosts])
+      // Adicionar no topo da lista apenas se não existir
+      setPosts(prevPosts => {
+        // Verificar se o post já existe na lista
+        const exists = prevPosts.some(post => post.id === fullPost.id)
+        console.log(`🔍 Verificando duplicata para post ${fullPost.id}:`, {
+          exists,
+          totalPosts: prevPosts.length,
+          existingIds: prevPosts.map(p => p.id.substring(0, 8))
+        })
+        
+        if (exists) {
+          console.log('🔄 Post já existe na lista, ignorando duplicata:', fullPost.id)
+          return prevPosts
+        }
+        
+        console.log('✅ Adicionando novo post na lista:', fullPost.id)
+        // Marcar como processado
+        processedPostsRef.current.add(fullPost.id)
+        // Usar uma nova referência para forçar re-render
+        const newPosts = [fullPost, ...prevPosts]
+        console.log('📊 Nova lista de posts:', newPosts.map(p => p.id.substring(0, 8)))
+        return newPosts
+      })
       
       // Mostrar notificação toast
       if (authorData && authorData.id !== user?.id) {
@@ -307,7 +369,7 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
     } catch (error) {
       console.error('Erro ao processar novo post:', error)
     }
-  }
+  }, [selectedSpace, user?.id])
 
   function handleUpdatePost(updatedPostData: any) {
     console.log('✏️ Post atualizado:', updatedPostData)
@@ -418,7 +480,9 @@ export default function HomePage({ user, profile, spaces, selectedSpace, onSpace
   }
 
   const handlePostCreated = (newPost: Post) => {
-    setPosts([newPost, ...posts])
+    // Não adicionar manualmente - deixar o sistema de realtime gerenciar
+    // Isso evita duplicação de posts
+    console.log('📝 Post criado via callback, ignorando para evitar duplicação:', newPost.id)
   }
 
   if (loading) {

@@ -317,7 +317,8 @@ export default function CreatePost({ user, profile, spaces, onPostCreated }: Cre
         }
 
         toast.success('Post criado com sucesso!')
-        onPostCreated(completePost)
+        // Não chamar onPostCreated para evitar duplicação - deixar realtime gerenciar
+        console.log('📝 Post criado, aguardando realtime para adicionar na lista')
         
         // Reset form
         setContent('')

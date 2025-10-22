@@ -605,14 +605,14 @@ export default function ChatPage({ user, profile, onViewProfile }: ChatPageProps
   }
 
   const renderMessageContent = (content: string) => {
-    // Detectar menções (@username) e hashtags (#tag)
-    const combinedRegex = /(@\w+)|(#\w+)/g
+    // Detectar menções (@username), hashtags (#tag) e URLs
+    const combinedRegex = /(@\w+)|(#\w+)|(https?:\/\/[^\s]+)/g
     const parts = []
     let lastIndex = 0
     let match
 
     while ((match = combinedRegex.exec(content)) !== null) {
-      // Adicionar texto antes da menção/hashtag
+      // Adicionar texto antes da menção/hashtag/URL
       if (match.index > lastIndex) {
         parts.push(content.substring(lastIndex, match.index))
       }
@@ -622,7 +622,7 @@ export default function ChatPage({ user, profile, onViewProfile }: ChatPageProps
         const username = match[1].substring(1)
         parts.push(
           <button
-            key={match.index}
+            key={`mention-${match.index}`}
             onClick={() => handleMentionClick(username)}
             className="bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 px-1 rounded font-medium hover:bg-primary-200 dark:hover:bg-primary-800 transition-colors cursor-pointer inline-flex items-center"
             title={`Ver perfil de @${username}`}
@@ -637,7 +637,7 @@ export default function ChatPage({ user, profile, onViewProfile }: ChatPageProps
         
         parts.push(
           <span
-            key={match.index}
+            key={`hashtag-${match.index}`}
             className={`px-1 rounded font-medium ${
               tag 
                 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' 
@@ -647,6 +647,21 @@ export default function ChatPage({ user, profile, onViewProfile }: ChatPageProps
           >
             #{tagName}
           </span>
+        )
+      } else if (match[3]) {
+        // É uma URL
+        const url = match[3]
+        parts.push(
+          <a
+            key={`url-${match.index}`}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:underline break-all"
+            title={url}
+          >
+            {url}
+          </a>
         )
       }
       

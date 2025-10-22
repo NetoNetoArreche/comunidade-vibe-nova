@@ -120,31 +120,50 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
   //   }
   // }, [showPostMenu, showEditModal])
 
-  // Função para processar menções no texto
+  // Função para processar menções e links no texto
   const renderContentWithMentions = (content: string) => {
-    // Regex para capturar menções até encontrar espaço duplo, quebra de linha ou fim da string
-    const mentionRegex = /@([^@\n]+?)(?=\s\s|\n|$)/g
-    let lastIndex = 0
     const elements: (string | JSX.Element)[] = []
+    let elementIndex = 0
+
+    // Processar menções e URLs juntos
+    // Regex combinada: captura menções @username ou URLs completas
+    const combinedRegex = /(@([^\s@\n]+))|(https?:\/\/[^\s]+)/g
+    let lastIndex = 0
     let match
 
-    while ((match = mentionRegex.exec(content)) !== null) {
-      // Adicionar texto antes da menção
+    while ((match = combinedRegex.exec(content)) !== null) {
+      // Adicionar texto antes do match
       if (match.index > lastIndex) {
         elements.push(content.substring(lastIndex, match.index))
       }
 
-      // Adicionar a menção como botão clicável
-      const mentionText = match[1].trim()
-      elements.push(
-        <button
-          key={match.index}
-          onClick={() => handleMentionClick(mentionText)}
-          className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium hover:underline cursor-pointer"
-        >
-          @{mentionText}
-        </button>
-      )
+      if (match[1]) {
+        // É uma menção @username
+        const mentionText = match[2].trim()
+        elements.push(
+          <button
+            key={`mention-${elementIndex++}`}
+            onClick={() => handleMentionClick(mentionText)}
+            className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium hover:underline cursor-pointer"
+          >
+            @{mentionText}
+          </button>
+        )
+      } else if (match[3]) {
+        // É uma URL
+        const url = match[3]
+        elements.push(
+          <a
+            key={`url-${elementIndex++}`}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline break-all"
+          >
+            {url}
+          </a>
+        )
+      }
 
       lastIndex = match.index + match[0].length
     }
@@ -504,12 +523,14 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
   }
 
   function toggleShareOptions() {
+    console.log('🔄 Toggle share options:', !showShareOptions)
     setShowShareOptions(!showShareOptions)
   }
 
   async function copyLink() {
     try {
       const postUrl = `${window.location.origin}/post/${post.id}`
+      console.log('🔗 Copiando link:', postUrl)
       await navigator.clipboard.writeText(postUrl)
       toast.success('Link copiado para a área de transferência!')
       setShowShareOptions(false)
@@ -519,6 +540,7 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
       // Fallback: mostrar o link para o usuário copiar manualmente
       const postUrl = `${window.location.origin}/post/${post.id}`
       prompt('Copie este link para compartilhar:', postUrl)
+      setShowShareOptions(false)
     }
   }
 
@@ -547,6 +569,7 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
     const postUrl = `${window.location.origin}/post/${post.id}`
     const shareText = `Confira este post: ${post.title || post.content.substring(0, 100)}...`
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + postUrl)}`
+    console.log('💬 Compartilhando no WhatsApp:', whatsappUrl)
     window.open(whatsappUrl, '_blank')
     setShowShareOptions(false)
   }
@@ -555,6 +578,7 @@ export default function PostCard({ post, currentUser, profile, spaces, onPostUpd
     const postUrl = `${window.location.origin}/post/${post.id}`
     const shareText = `Confira este post: ${post.title || post.content.substring(0, 100)}...`
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(postUrl)}`
+    console.log('🐦 Compartilhando no Twitter:', twitterUrl)
     window.open(twitterUrl, '_blank')
     setShowShareOptions(false)
   }

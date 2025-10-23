@@ -844,12 +844,20 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
       return
     }
 
+    if (!user?.id) {
+      console.error('❌ Usuário não está logado ou ID não disponível')
+      toast.error('Erro: Usuário não identificado. Faça login novamente.')
+      return
+    }
+
     console.log('📧 Iniciando envio de emails:', {
       template: selectedTemplate,
       subject: emailSubject,
       recipients: selectedUsers.length,
       adminId: user?.id,
-      userEmail: user?.email
+      userEmail: user?.email,
+      expectedAdminId: 'e104636c-c004-45d7-ab0e-0aff02c78b1c',
+      isCorrectId: user?.id === 'e104636c-c004-45d7-ab0e-0aff02c78b1c'
     })
 
     setSendingEmails(true)
@@ -2778,22 +2786,30 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
                     </button>
                     <button
                       onClick={async () => {
-                        console.log('👤 Verificando status de admin:', {
+                        const userInfo = {
                           userId: user?.id,
                           userEmail: user?.email,
                           expectedAdminEmail: 'helioarreche@gmail.com',
-                          isAdmin: user?.email === 'helioarreche@gmail.com'
-                        })
+                          expectedAdminId: 'e104636c-c004-45d7-ab0e-0aff02c78b1c',
+                          isCorrectEmail: user?.email === 'helioarreche@gmail.com',
+                          isCorrectId: user?.id === 'e104636c-c004-45d7-ab0e-0aff02c78b1c'
+                        }
                         
-                        if (user?.email === 'helioarreche@gmail.com') {
-                          toast.success('✅ Você é reconhecido como admin!')
+                        console.log('👤 Informações completas do usuário:', userInfo)
+                        
+                        if (userInfo.isCorrectEmail && userInfo.isCorrectId) {
+                          toast.success('✅ Você é o admin correto!')
+                        } else if (userInfo.isCorrectEmail && !userInfo.isCorrectId) {
+                          toast.error(`❌ Email correto mas ID diferente. ID atual: ${user?.id}`)
+                        } else if (!userInfo.isCorrectEmail && userInfo.isCorrectId) {
+                          toast.error(`❌ ID correto mas email diferente. Email atual: ${user?.email}`)
                         } else {
-                          toast.error(`❌ Não é admin. Email atual: ${user?.email}`)
+                          toast.error(`❌ Usuário diferente. Email: ${user?.email}, ID: ${user?.id}`)
                         }
                       }}
                       className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors ml-2"
                     >
-                      👤 Verificar Admin
+                      👤 Info Usuário
                     </button>
                   </div>
                 </div>

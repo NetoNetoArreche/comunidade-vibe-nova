@@ -413,7 +413,7 @@ function EventModal({ event, onClose, onSave, loading }: any) {
 }
 
 export default function AdminPage({ user, onPageChange }: AdminPageProps) {
-  const [activeTab, setActiveTab] = useState<'settings' | 'spaces' | 'groups' | 'events' | 'users' | 'tags' | 'stats'>('settings')
+  const [activeTab, setActiveTab] = useState<'settings' | 'spaces' | 'groups' | 'events' | 'users' | 'tags' | 'stats' | 'emails'>('settings')
   const [loading, setLoading] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
@@ -475,6 +475,17 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
     totalLikes: 0
   })
 
+  // Email Management
+  const [emailTemplates, setEmailTemplates] = useState<any[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('')
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailContent, setEmailContent] = useState('')
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+  const [emailVariables, setEmailVariables] = useState<Record<string, string>>({})
+  const [sendingEmails, setSendingEmails] = useState(false)
+  const [userSearchTerm, setUserSearchTerm] = useState('')
+  const [filteredUsersForEmail, setFilteredUsersForEmail] = useState<any[]>([])
+
   useEffect(() => {
     checkAdminAccess()
   }, [user])
@@ -517,6 +528,8 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
       await loadTags()
     } else if (activeTab === 'stats') {
       await loadStats()
+    } else if (activeTab === 'emails') {
+      await loadEmailTemplates()
     }
   }
 
@@ -755,6 +768,206 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
       totalComments: commentsCount || 0,
       totalLikes: likesCount || 0
     })
+  }
+
+  async function loadEmailTemplates() {
+    try {
+      // Carregar templates de email
+      const response = await fetch('/api/admin/send-email')
+      const data = await response.json()
+      
+      if (data.templates) {
+        setEmailTemplates(data.templates)
+      }
+      
+      // Carregar usuários para a aba de emails
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          username,
+          email,
+          avatar_url,
+          created_at,
+          user_tags (
+            tag_name,
+            tag_color
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(1000)
+
+      if (!usersError && usersData) {
+        console.log('✅ Usuários carregados para emails:', usersData.length)
+        setUsers(usersData)
+        // Inicializar lista filtrada com todos os usuários
+        setFilteredUsersForEmail(usersData)
+      } else {
+        console.error('❌ Erro ao carregar usuários:', usersError)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados da aba de emails:', error)
+      toast.error('Erro ao carregar dados da aba de emails')
+    }
+  }
+
+  function handleUserSearch(searchTerm: string) {
+    setUserSearchTerm(searchTerm)
+    
+    if (!searchTerm.trim()) {
+      setFilteredUsersForEmail(users)
+      return
+    }
+    
+    const search = searchTerm.toLowerCase()
+    const filtered = users.filter(u => 
+      (u.full_name?.toLowerCase().includes(search)) ||
+      (u.username?.toLowerCase().includes(search)) ||
+      (u.email?.toLowerCase().includes(search))
+    )
+    setFilteredUsersForEmail(filtered)
+  }
+
+  async function sendEmails() {
+    if (!selectedTemplate || selectedUsers.length === 0) {
+      toast.error('Selecione um template e pelo menos um usuário')
+      return
+    }
+
+    if (!emailSubject.trim() || !emailContent.trim()) {
+      toast.error('Preencha o assunto e o conteúdo do email')
+      return
+    }
+
+    console.log('📧 Iniciando envio de emails:', {
+      template: selectedTemplate,
+      subject: emailSubject,
+      recipients: selectedUsers.length,
+      adminId: user?.id
+    })
+
+    setSendingEmails(true)
+
+    try {
+      const variables = {
+        ...emailVariables,
+        subject: emailSubject,
+        content: emailContent
+      }
+
+      console.log('📤 Enviando requisição para API...')
+
+      const response = await fetch('/api/admin/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          templateId: selectedTemplate,
+          recipientIds: selectedUsers,
+          variables,
+          adminId: user?.id
+        })
+      })
+
+      console.log('📨 Resposta da API:', response.status, response.statusText)
+
+      // Tentar ler o texto da resposta primeiro
+      const responseText = await response.text()
+      console.log('📄 Resposta (texto):', responseText)
+
+      // Tentar fazer parse do JSON
+      let result
+      try {
+        result = JSON.parse(responseText)
+        console.log('📊 Resultado (JSON):', result)
+      } catch (parseError) {
+        console.error('❌ Erro ao fazer parse do JSON:', parseError)
+        console.error('Resposta recebida:', responseText)
+        toast.error(`Erro ao processar resposta do servidor: ${responseText || 'Resposta vazia'}`)
+        return
+      }
+
+      if (result.success) {
+        toast.success(result.message || 'Emails enviados com sucesso!')
+        console.log('✅ Emails enviados com sucesso!')
+        // Reset form
+        setSelectedTemplate('')
+        setEmailSubject('')
+        setEmailContent('')
+        setSelectedUsers([])
+        setEmailVariables({})
+      } else {
+        console.error('❌ Erro ao enviar emails:', result.error)
+        toast.error(result.error || 'Erro ao enviar emails')
+      }
+    } catch (error) {
+      console.error('❌ Erro ao enviar emails:', error)
+      toast.error('Erro ao enviar emails')
+    } finally {
+      setSendingEmails(false)
+    }
+  }
+
+  function handleTemplateChange(templateId: string) {
+    setSelectedTemplate(templateId)
+    
+    if (templateId) {
+      const template = emailTemplates.find(t => t.id === templateId)
+      if (template) {
+        // Preencher automaticamente os campos com o template selecionado
+        setEmailSubject(template.subject)
+        
+        // Extrair o conteúdo do HTML do template (removendo tags HTML)
+        const tempDiv = document.createElement('div')
+        tempDiv.innerHTML = template.html
+        
+        // Buscar o conteúdo dentro da div .content
+        const contentDiv = tempDiv.querySelector('.content')
+        if (contentDiv) {
+          // Extrair apenas o texto, removendo HTML
+          let content = contentDiv.textContent || (contentDiv as HTMLElement).innerText || ''
+          // Limpar espaços extras e quebras de linha
+          content = content.replace(/\s+/g, ' ').trim()
+          // Remover partes que são comuns em todos os templates
+          content = content.replace(/Olá \*\*{{name}}\*\*,/g, '').trim()
+          content = content.replace(/Atenciosamente,.*Equipe Vibe Coding/g, '').trim()
+          setEmailContent(content)
+        } else {
+          // Fallback: usar uma mensagem padrão baseada no template
+          const defaultContent = {
+            'welcome': 'Bem-vindo à nossa comunidade! Estamos felizes em tê-lo conosco.',
+            'announcement': 'Temos um comunicado importante para compartilhar com você.',
+            'campaign': 'Temos uma oferta especial que não pode perder!',
+            'notification': 'Esta é uma notificação importante da nossa comunidade.'
+          }
+          setEmailContent(defaultContent[templateId as keyof typeof defaultContent] || '')
+        }
+        
+        // Preencher variáveis específicas do template
+        if (templateId === 'campaign') {
+          setEmailVariables({
+            cta_url: 'https://www.comunidadevibecoding.com',
+            cta_text: 'Acessar Agora'
+          })
+        } else {
+          setEmailVariables({})
+        }
+      }
+    } else {
+      setEmailSubject('')
+      setEmailContent('')
+      setEmailVariables({})
+    }
+  }
+
+  function handleUserSelection(userId: string, checked: boolean) {
+    if (checked) {
+      setSelectedUsers(prev => [...prev, userId])
+    } else {
+      setSelectedUsers(prev => prev.filter(id => id !== userId))
+    }
   }
 
   async function uploadBanner(file: File) {
@@ -1144,6 +1357,17 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
           >
             <BarChart3 className="h-5 w-5 inline mr-2" />
             Estatísticas
+          </button>
+          <button
+            onClick={() => setActiveTab('emails')}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'emails'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Settings className="h-5 w-5 inline mr-2" />
+            Enviar Emails
           </button>
         </nav>
       </div>
@@ -2428,6 +2652,390 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'emails' && (
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+              Enviar Emails para Usuários
+            </h2>
+            
+            <div className="space-y-8">
+              {/* Template Selection */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  1. Escolha um Template
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {emailTemplates.map((template) => (
+                    <div
+                      key={template.id}
+                      onClick={() => handleTemplateChange(template.id)}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                        selectedTemplate === template.id
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                          : 'border-gray-200 dark:border-gray-600 hover:border-primary-300 dark:hover:border-primary-500'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className={`text-2xl mb-2 ${
+                          selectedTemplate === template.id ? 'text-primary-600' : 'text-gray-400'
+                        }`}>
+                          {template.id === 'welcome' && '🎉'}
+                          {template.id === 'announcement' && '📢'}
+                          {template.id === 'campaign' && '🚀'}
+                          {template.id === 'notification' && '🔔'}
+                        </div>
+                        <h4 className="font-medium text-gray-900 dark:text-white text-sm">
+                          {template.name}
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {template.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Test Email Button */}
+              {selectedTemplate && (
+                <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                        🧪 Teste de Email
+                      </h4>
+                      <p className="text-xs text-yellow-600 dark:text-yellow-300 mt-1">
+                        Envie um email de teste para verificar se o sistema está funcionando
+                      </p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          console.log('🧪 Iniciando teste de email...')
+                          const response = await fetch('/api/test-email', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              email: user?.email || 'helioarreche@gmail.com',
+                              name: 'Admin'
+                            })
+                          })
+                          
+                          const result = await response.json()
+                          console.log('📊 Resultado do teste:', result)
+                          
+                          if (result.success) {
+                            toast.success('✅ Email de teste enviado com sucesso!')
+                          } else {
+                            toast.error(`❌ Erro no teste: ${result.error}`)
+                          }
+                        } catch (error) {
+                          console.error('❌ Erro no teste:', error)
+                          toast.error('❌ Erro ao testar email')
+                        }
+                      }}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      🧪 Testar Email
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          console.log('🔍 Verificando variáveis de ambiente...')
+                          const response = await fetch('/api/debug-env')
+                          const result = await response.json()
+                          console.log('🔍 Variáveis de ambiente:', result)
+                          
+                          if (result.success) {
+                            const missing = Object.entries(result.environment)
+                              .filter(([, value]) => (value as string).includes('❌'))
+                              .map(([key]) => key)
+                            
+                            if (missing.length > 0) {
+                              toast.error(`❌ Variáveis faltando: ${missing.join(', ')}`)
+                            } else {
+                              toast.success('✅ Todas as variáveis estão configuradas!')
+                            }
+                          } else {
+                            toast.error('❌ Erro ao verificar ambiente')
+                          }
+                        } catch (error) {
+                          console.error('❌ Erro na verificação:', error)
+                          toast.error('❌ Erro ao verificar ambiente')
+                        }
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors ml-2"
+                    >
+                      🔍 Verificar Env
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Email Editor */}
+              {selectedTemplate && (
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    2. Edite o Conteúdo do Email
+                  </h3>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Assunto do Email
+                      </label>
+                      <input
+                        type="text"
+                        value={emailSubject}
+                        onChange={(e) => setEmailSubject(e.target.value)}
+                        placeholder="Digite o assunto do email..."
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Conteúdo do Email
+                      </label>
+                      <textarea
+                        value={emailContent}
+                        onChange={(e) => setEmailContent(e.target.value)}
+                        placeholder="Digite o conteúdo do email..."
+                        rows={6}
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        💡 Dica: Use <strong>{'{{name}}'}</strong> para personalizar com o nome do usuário
+                      </p>
+                    </div>
+
+                    {selectedTemplate === 'campaign' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            URL do Botão de Ação
+                          </label>
+                          <input
+                            type="url"
+                            value={emailVariables.cta_url || ''}
+                            onChange={(e) => setEmailVariables(prev => ({ ...prev, cta_url: e.target.value }))}
+                            placeholder="https://exemplo.com"
+                            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Texto do Botão
+                          </label>
+                          <input
+                            type="text"
+                            value={emailVariables.cta_text || ''}
+                            onChange={(e) => setEmailVariables(prev => ({ ...prev, cta_text: e.target.value }))}
+                            placeholder="Clique aqui"
+                            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Preview do Email */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Preview do Email
+                      </label>
+                      <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-white dark:bg-gray-800">
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          <strong>Assunto:</strong> {emailSubject || 'Sem assunto'}
+                        </div>
+                        <div className="text-sm text-gray-800 dark:text-gray-200">
+                          <strong>Conteúdo:</strong> {emailContent || 'Sem conteúdo'}
+                        </div>
+                        {selectedTemplate === 'campaign' && (emailVariables.cta_url || emailVariables.cta_text) && (
+                          <div className="mt-2">
+                            <span className="inline-block bg-primary-500 text-white px-3 py-1 rounded text-sm">
+                              {emailVariables.cta_text || 'Botão'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* User Selection */}
+              {selectedTemplate && (
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    3. Selecione os Destinatários
+                  </h3>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-6 space-y-4">
+                    {/* Filtro de usuários */}
+                    <div>
+                      <input
+                        type="text"
+                        value={userSearchTerm}
+                        onChange={(e) => handleUserSearch(e.target.value)}
+                        placeholder="🔍 Buscar usuário por nome, username ou email..."
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {selectedUsers.length} de {users.length} usuários selecionados
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (selectedUsers.length === users.length) {
+                            setSelectedUsers([])
+                          } else {
+                            setSelectedUsers(users.map(u => u.id))
+                          }
+                        }}
+                        className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium px-3 py-1 rounded-md hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
+                      >
+                        {selectedUsers.length === users.length ? '✓ Desmarcar Todos' : '☐ Selecionar Todos'}
+                      </button>
+                    </div>
+                
+                <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                  <div className="max-h-[500px] overflow-y-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-4 py-3 text-left w-12">
+                            <input
+                              type="checkbox"
+                              checked={selectedUsers.length === (filteredUsersForEmail.length > 0 ? filteredUsersForEmail.length : users.length) && users.length > 0}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  // Selecionar todos os usuários (filtrados ou todos)
+                                  const usersToSelect = filteredUsersForEmail.length > 0 ? filteredUsersForEmail : users
+                                  setSelectedUsers(usersToSelect.map(u => u.id))
+                                } else {
+                                  setSelectedUsers([])
+                                }
+                              }}
+                              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                            />
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Nome
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Email
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {(filteredUsersForEmail.length > 0 ? filteredUsersForEmail : users).map((user) => (
+                          <tr 
+                            key={user.id}
+                            className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${
+                              selectedUsers.includes(user.id) ? 'bg-primary-50 dark:bg-primary-900/20' : ''
+                            }`}
+                            onClick={() => handleUserSelection(user.id, !selectedUsers.includes(user.id))}
+                          >
+                            <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selectedUsers.includes(user.id)}
+                                onChange={(e) => handleUserSelection(user.id, e.target.checked)}
+                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                              />
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mr-3 shadow-sm">
+                                  <span className="text-sm font-bold text-white">
+                                    {(user.full_name || user.username || 'U').charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {user.full_name || user.username || 'Usuário'}
+                                  </p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    @{user.username || 'sem-username'}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <p className="text-sm text-gray-900 dark:text-white">
+                                {user.email}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                ✓ Válido
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {(filteredUsersForEmail.length > 0 ? filteredUsersForEmail : users).length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                              Nenhum usuário encontrado
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                  </div>
+                </div>
+              )}
+
+              {/* Send Button */}
+              {selectedTemplate && selectedUsers.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    4. Enviar Emails
+                  </h3>
+                  <div className="bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 border-2 border-primary-200 dark:border-primary-800 rounded-lg p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                          Pronto para enviar!
+                        </h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Você está prestes a enviar emails para <strong>{selectedUsers.length}</strong> usuário(s) selecionado(s).
+                        </p>
+                      </div>
+                      <button
+                        onClick={sendEmails}
+                        disabled={sendingEmails || !emailSubject || !emailContent}
+                        className="bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                      >
+                        {sendingEmails ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <span>Enviando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>📧</span>
+                            <span>Enviar Emails</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
         )}
       </div>

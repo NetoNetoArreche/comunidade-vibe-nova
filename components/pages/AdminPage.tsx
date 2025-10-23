@@ -844,9 +844,9 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
       return
     }
 
-    if (!user?.id) {
-      console.error('❌ Usuário não está logado ou ID não disponível')
-      toast.error('Erro: Usuário não identificado. Faça login novamente.')
+    if (!user?.email || user.email !== 'helioarreche@gmail.com') {
+      console.error('❌ Usuário não é admin')
+      toast.error('Erro: Acesso negado. Somente administradores podem enviar emails.')
       return
     }
 

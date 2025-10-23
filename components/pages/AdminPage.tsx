@@ -844,7 +844,8 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
       template: selectedTemplate,
       subject: emailSubject,
       recipients: selectedUsers.length,
-      adminId: user?.id
+      adminId: user?.id,
+      userEmail: user?.email
     })
 
     setSendingEmails(true)
@@ -2770,6 +2771,57 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
                       className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors ml-2"
                     >
                       🔍 Verificar Env
+                    </button>
+                    <button
+                      onClick={async () => {
+                        console.log('👤 Verificando status de admin:', {
+                          userId: user?.id,
+                          userEmail: user?.email,
+                          expectedAdminEmail: 'helioarreche@gmail.com',
+                          isAdmin: user?.email === 'helioarreche@gmail.com'
+                        })
+                        
+                        if (user?.email === 'helioarreche@gmail.com') {
+                          toast.success('✅ Você é reconhecido como admin!')
+                        } else {
+                          toast.error(`❌ Não é admin. Email atual: ${user?.email}`)
+                        }
+                      }}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors ml-2"
+                    >
+                      👤 Verificar Admin
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          console.log('🔍 Testando verificação de admin no banco...')
+                          const response = await fetch('/api/debug-admin', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ adminId: user?.id })
+                          })
+                          
+                          const result = await response.json()
+                          console.log('🔍 Resultado debug admin:', result)
+                          
+                          if (result.success) {
+                            const { debug } = result
+                            if (debug.isAdmin) {
+                              toast.success('✅ Admin verificado no banco!')
+                            } else {
+                              toast.error(`❌ Não é admin no banco. Email: ${debug.profileEmail}`)
+                            }
+                          } else {
+                            toast.error(`❌ Erro: ${result.error}`)
+                          }
+                        } catch (error) {
+                          console.error('❌ Erro no debug:', error)
+                          toast.error('❌ Erro ao verificar admin no banco')
+                        }
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors ml-2"
+                    >
+                      🔍 Debug Banco
                     </button>
                   </div>
                 </div>

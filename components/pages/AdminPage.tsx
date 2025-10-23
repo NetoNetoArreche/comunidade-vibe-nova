@@ -588,24 +588,26 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
   }
 
   async function loadUsers() {
-    const { data, error } = await supabase
-      .from('users')
-      .select(`
-        *,
-        user_tags (
-          tag_id,
-          tags (
-            id,
-            name,
-            color
-          )
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(1000) // Limitar para performance
+    console.log('🔄 Carregando usuários...')
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1000)
 
-    if (!error && data) {
-      setUsers(data)
+      console.log('📊 Resultado da query:', { data: data?.length, error })
+
+      if (!error && data) {
+        console.log('✅ Usuários carregados:', data.length)
+        setUsers(data)
+      } else {
+        console.error('❌ Erro ao carregar usuários:', error)
+        setUsers([])
+      }
+    } catch (err) {
+      console.error('❌ Erro crítico:', err)
+      setUsers([])
     }
   }
 
@@ -751,7 +753,7 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
 
   async function loadStats() {
     const { count: usersCount } = await supabase
-      .from('users')
+      .from('profiles')
       .select('*', { count: 'exact', head: true })
 
     const { count: postsCount } = await supabase
@@ -786,7 +788,7 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
       
       // Carregar usuários para a aba de emails
       const { data: usersData, error: usersError } = await supabase
-        .from('users')
+        .from('profiles')
         .select(`
           id,
           full_name,
@@ -844,9 +846,9 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
       return
     }
 
-    if (!user?.email || user.email !== 'helioarreche@gmail.com') {
-      console.error('❌ Usuário não é admin')
-      toast.error('Erro: Acesso negado. Somente administradores podem enviar emails.')
+    if (!user?.id) {
+      console.error('❌ Usuário não está logado ou ID não disponível')
+      toast.error('Erro: Usuário não identificado. Faça login novamente.')
       return
     }
 

@@ -505,12 +505,31 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
     }
   }, [isAdmin])
 
-  function checkAdminAccess() {
-    if (!user || user.email !== ADMIN_EMAIL) {
+  async function checkAdminAccess() {
+    if (!user?.id) {
       setIsAdmin(false)
       return
     }
-    setIsAdmin(true)
+
+    // Verificar se o usuário tem role admin no banco
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('role, email')
+      .eq('id', user.id)
+      .single()
+
+    console.log('🔍 Verificação de admin:', { 
+      userId: user.id, 
+      profile, 
+      error,
+      isAdmin: profile?.role === 'admin'
+    })
+
+    if (!error && profile?.role === 'admin') {
+      setIsAdmin(true)
+    } else {
+      setIsAdmin(false)
+    }
   }
 
   async function loadData() {

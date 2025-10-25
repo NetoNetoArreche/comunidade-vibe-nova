@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     console.log('👤 Perfil encontrado:', adminProfile)
     console.log('❌ Erro (se houver):', adminError)
     
-    const isAdmin = adminProfile?.email === ADMIN_EMAIL
+    const isAdmin = adminProfile?.role === 'admin'
     
     return NextResponse.json({
       success: true,

@@ -65,17 +65,26 @@ export async function POST(request: NextRequest) {
       adminIdLength: adminId?.length
     })
 
-    // Verificar se o usuário é admin
+    // Verificar se o usuário é admin pela role
     const { data: adminProfile, error: adminError } = await supabase
       .from('profiles')
-      .select('email')
+      .select('role, email, username')
       .eq('id', adminId)
       .single()
 
-    console.log('👤 Perfil do admin:', { email: adminProfile?.email, isAdmin: adminProfile?.email === ADMIN_EMAIL })
+    console.log('👤 Perfil do admin:', { 
+      role: adminProfile?.role, 
+      email: adminProfile?.email,
+      username: adminProfile?.username,
+      isAdmin: adminProfile?.role === 'admin' 
+    })
 
-    if (adminError || !adminProfile || adminProfile.email !== ADMIN_EMAIL) {
-      console.error('❌ Acesso negado:', { adminError, email: adminProfile?.email })
+    if (adminError || !adminProfile || adminProfile.role !== 'admin') {
+      console.error('❌ Acesso negado:', { 
+        adminError, 
+        role: adminProfile?.role,
+        email: adminProfile?.email 
+      })
       return NextResponse.json({ 
         success: false,
         error: 'Acesso negado. Somente administradores podem enviar emails.' 

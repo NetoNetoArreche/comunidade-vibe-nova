@@ -175,6 +175,24 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
               margin: 20px 0;
               font-weight: bold;
             }
+            .steps {
+              background: white;
+              padding: 20px;
+              border-radius: 8px;
+              margin: 20px 0;
+            }
+            .step {
+              margin: 10px 0;
+              padding-left: 30px;
+              position: relative;
+            }
+            .step::before {
+              content: "✓";
+              position: absolute;
+              left: 0;
+              color: #667eea;
+              font-weight: bold;
+            }
           </style>
         </head>
         <body>
@@ -184,9 +202,30 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
           <div class="content">
             <p>Olá <strong>{{name}}</strong>,</p>
             
-            <p>{{content}}</p>
+            <p>Sua compra foi confirmada com sucesso! Você já tem acesso completo à nossa comunidade.</p>
             
-            <p>Atenciosamente,<br>Equipe Vibe Coding</p>
+            <div class="steps">
+              <h3>📝 Como acessar em 3 passos:</h3>
+              <div class="step">Acesse a plataforma</div>
+              <div class="step">Clique em "Esqueci minha senha"</div>
+              <div class="step">Digite seu email: <strong>{{email}}</strong></div>
+              <div class="step">Crie sua senha e faça login!</div>
+            </div>
+            
+            <center>
+              <a href="https://www.comunidadevibecoding.com/auth/reset-password" class="button">
+                🔑 Criar Minha Senha
+              </a>
+            </center>
+            
+            <p style="margin-top: 30px; color: #666; font-size: 14px;">
+              Se você tiver alguma dúvida, responda este email que teremos prazer em ajudar!
+            </p>
+            
+            <p style="color: #666; font-size: 14px;">
+              Até logo,<br>
+              <strong>Equipe Comunidade</strong>
+            </p>
           </div>
         </body>
       </html>

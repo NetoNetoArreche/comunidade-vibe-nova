@@ -57,7 +57,13 @@ export async function POST(request: NextRequest) {
     
     const { templateId, recipientIds, variables, adminId } = body
 
-    console.log('📧 Requisição de envio de email recebida:', { templateId, recipientCount: recipientIds?.length, adminId })
+    console.log('📧 Requisição de envio de email recebida:', { 
+      templateId, 
+      recipientCount: recipientIds?.length, 
+      adminId,
+      adminIdType: typeof adminId,
+      adminIdLength: adminId?.length
+    })
 
     // Verificar se o usuário é admin
     const { data: adminProfile, error: adminError } = await supabase
@@ -88,24 +94,28 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Template encontrado:', template.name)
 
-    // Buscar dados dos destinatários
-    const { data: recipients, error: recipientsError } = await supabase
-      .from('profiles')
-      .select('id, full_name, username, email')
-      .in('id', recipientIds)
+    // Buscar dados dos destinatários usando função RPC
+    const { data: allProfiles, error: profilesError } = await supabase
+      .rpc('get_profiles_with_email')
 
-    if (recipientsError || !recipients) {
-      console.error('❌ Erro ao buscar destinatários:', recipientsError)
+    if (profilesError || !allProfiles) {
+      console.error('❌ Erro ao buscar perfis:', profilesError)
       return NextResponse.json({ 
         success: false,
         error: 'Erro ao buscar destinatários' 
       }, { status: 500 })
     }
 
+    // Filtrar apenas os destinatários selecionados
+    const recipients = allProfiles.filter((profile: any) => recipientIds.includes(profile.id))
+
+    console.log('📋 Destinatários com emails:', recipients.filter((r: any) => r.email).length)
+    console.log('📋 Destinatários sem emails:', recipients.filter((r: any) => !r.email).length)
+
     console.log('📋 Destinatários encontrados:', recipients.length)
 
     // Filtrar apenas usuários com email válido
-    const validRecipients = recipients.filter(r => r.email)
+    const validRecipients = recipients.filter((r: any) => r.email)
 
     console.log('✅ Destinatários válidos:', validRecipients.length)
 
@@ -122,7 +132,7 @@ export async function POST(request: NextRequest) {
     // Enviar emails
     const result = await sendBulkEmail(
       templateId,
-      validRecipients.map(r => ({
+      validRecipients.map((r: any) => ({
         email: r.email!,
         name: r.full_name || r.username || 'Usuário'
       })),

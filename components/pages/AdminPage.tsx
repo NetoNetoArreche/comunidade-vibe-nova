@@ -786,28 +786,15 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
         setEmailTemplates(data.templates)
       }
       
-      // Carregar usuários para a aba de emails
+      // Carregar usuários usando função RPC que combina profiles + emails
       const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          full_name,
-          username,
-          email,
-          avatar_url,
-          created_at,
-          user_tags (
-            tag_name,
-            tag_color
-          )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(1000)
+        .rpc('get_profiles_with_email')
 
       if (!usersError && usersData) {
         console.log('✅ Usuários carregados para emails:', usersData.length)
+        console.log('📧 Usuários com email:', usersData.filter((u: any) => u.email).length)
+        
         setUsers(usersData)
-        // Inicializar lista filtrada com todos os usuários
         setFilteredUsersForEmail(usersData)
       } else {
         console.error('❌ Erro ao carregar usuários:', usersError)

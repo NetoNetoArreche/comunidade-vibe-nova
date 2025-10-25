@@ -2798,9 +2798,9 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
                           userId: user?.id,
                           userEmail: user?.email,
                           expectedAdminEmail: 'helioarreche@gmail.com',
-                          expectedAdminId: 'e104636c-c004-45d7-ab0e-0aff02c78b1c',
+                          expectedAdminId: '893c16ec-6dc9-4247-9195-1da0ecdb815e',
                           isCorrectEmail: user?.email === 'helioarreche@gmail.com',
-                          isCorrectId: user?.id === 'e104636c-c004-45d7-ab0e-0aff02c78b1c'
+                          isCorrectId: user?.id === '893c16ec-6dc9-4247-9195-1da0ecdb815e'
                         }
                         
                         console.log('👤 Informações completas do usuário:', userInfo)

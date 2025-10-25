@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sendTemplateEmail } from '@/lib/email'
+import { sendWelcomeEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,15 +17,7 @@ export async function POST(request: NextRequest) {
     
     console.log('📧 Enviando email de teste para:', email)
     
-    const result = await sendTemplateEmail(
-      'notification',
-      [email],
-      {
-        name: name,
-        subject: 'Teste de Email - Admin',
-        content: 'Este é um email de teste enviado pelo sistema administrativo. Se você recebeu este email, significa que o sistema de envio está funcionando corretamente!'
-      }
-    )
+    const result = await sendWelcomeEmail(email, `${name} (TESTE)`)
     
     console.log('📊 Resultado do teste:', result)
     

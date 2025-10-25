@@ -1231,10 +1231,45 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
       .eq('id', groupId)
 
     if (error) {
+      console.error(error)
       toast.error('Erro ao deletar grupo')
     } else {
       toast.success('Grupo deletado!')
       loadGroups()
+    }
+  }
+
+  async function deleteUser(userId: string, userName: string) {
+    if (!confirm(`Tem certeza que deseja deletar o usuário ${userName}? Esta ação não pode ser desfeita e removerá completamente o acesso dele.`)) return
+
+    try {
+      console.log('🗑️ Deletando usuário completamente:', userId)
+      
+      // Chamar API para deletar usuário completamente (auth + profile + dados relacionados)
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId,
+          adminId: user?.id 
+        })
+      })
+
+      const result = await response.json()
+      console.log('📊 Resultado da exclusão:', result)
+
+      if (result.success) {
+        console.log('✅ Usuário deletado completamente')
+        toast.success('Usuário deletado com sucesso!')
+        loadUsers() // Recarregar lista de usuários
+      } else {
+        console.error('❌ Erro ao deletar usuário:', result.error)
+        toast.error(`Erro ao deletar usuário: ${result.error}`)
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro crítico ao deletar usuário:', error)
+      toast.error('Erro crítico ao deletar usuário')
     }
   }
 
@@ -2185,12 +2220,7 @@ export default function AdminPage({ user, onPageChange }: AdminPageProps) {
                               <Edit className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => {
-                                if (confirm(`Tem certeza que deseja deletar o usuário ${user.full_name || user.username}?`)) {
-                                  // Função de deletar será implementada
-                                  toast.error('Função de deletar usuário em desenvolvimento')
-                                }
-                              }}
+                              onClick={() => deleteUser(user.id, user.full_name || user.username || 'Usuário')}
                               className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                               title="Deletar Usuário"
                             >
